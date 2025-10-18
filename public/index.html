@@ -29,17 +29,61 @@
     <div id="postsList"></div>
   </div>
 
-  <script src="script.js"></script>
-  <script>
-    // index 페이지 전용: 로드, 검색
-    (async function(){
-      await showCurrentUser();
-      await loadPosts();
+<script src="script.js"></script>
+<script>
+(async function(){
+  // 현재 로그인 유저 표시
+  await showCurrentUser();
 
-      document.getElementById("searchInput").addEventListener("input", async (e) => {
-        await loadPosts(e.target.value.trim());
-      });
-    })();
-  </script>
+  // 게시글 로드
+  await loadPosts();
+
+  // 검색 기능
+  document.getElementById("searchInput").addEventListener("input", async (e) => {
+    await loadPosts(e.target.value.trim());
+  });
+
+  // 게시글 로드 함수 (랜덤 순서)
+  async function loadPosts(search=""){
+    const res = await fetch("/api/posts");
+    const data = await res.json();
+    let posts = data.posts || [];
+
+    // 검색 필터
+    if(search){
+      const keyword = search.toLowerCase();
+      posts = posts.filter(p =>
+        p.title.toLowerCase().includes(keyword) ||
+        p.content.toLowerCase().includes(keyword) ||
+        p.author.toLowerCase().includes(keyword)
+      );
+    }
+
+    // 랜덤 섞기
+    posts = posts.sort(() => Math.random() - 0.5);
+
+    const container = document.getElementById("postsList");
+    container.innerHTML = "";
+
+    if(posts.length === 0){
+      container.innerHTML = "<div class='card muted'>게시글이 없습니다.</div>";
+      return;
+    }
+
+    posts.forEach(post => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <div class="post-meta small muted">
+          작성자: ${post.author} | 작성일: ${new Date(post.createdAt).toLocaleString()}
+        </div>
+        <div class="post-title">${post.title}</div>
+        <div class="post-content">${post.content}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
+})();
+</script>
 </body>
 </html>
