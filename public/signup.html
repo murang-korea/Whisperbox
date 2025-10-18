@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style.css">
+<title>회원가입</title>
+</head>
+<body>
+<div class="container">
+  <h2>회원가입</h2>
+  <input type="text" id="username" placeholder="아이디">
+  <input type="text" id="nickname" placeholder="닉네임">
+  <input type="password" id="password" placeholder="비밀번호">
+  <button onclick="signup()">회원가입</button>
+</div>
+<script>
+async function signup() {
+  const username = document.getElementById("username").value;
+  const nickname = document.getElementById("nickname").value;
+  const password = document.getElementById("password").value;
+  const res = await fetch("/signup", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({username, nickname, password})
+  });
+  const data = await res.json();
+  if(data.success) alert("가입 완료!");
+  else alert(data.error);
+}
+</script>
+</body>
+</html>
