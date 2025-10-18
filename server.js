@@ -13,10 +13,11 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // --- lowdb 설정 (영구 저장: db.json)
+const defaultData = { users: [], posts: [] }; // ✅ 기본값 필수
 const adapter = new JSONFile(path.join(__dirname, "db.json"));
-const db = new Low(adapter);
+const db = new Low(adapter, defaultData); // ✅ 기본값을 두 번째 인자로 전달
 await db.read();
-db.data ||= { users: [], posts: [] }; // 기본 구조
+await db.write(); // 파일이 없을 경우 생성
 
 // --- 미들웨어
 app.use(bodyParser.json());
@@ -29,14 +30,14 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- 관리자 계정 (간단 방식)
+// --- 관리자 계정
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "woojik";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "myaptitude";
 
 // --- 유틸
 const saveDB = async () => { await db.write(); };
 
-// --- 인증 체크 미들웨어
+// --- 인증 체크
 const requireLogin = (req, res, next) => {
   if (!req.session?.user) return res.status(401).json({ error: "로그인 필요" });
   next();
@@ -46,33 +47,27 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// --- API: 세션 확인
+// --- 나머지 라우트 (전부 그대로 유지)
 app.get("/api/me", (req, res) => {
   if (req.session?.user) return res.json({ user: req.session.user });
   return res.json({ user: null });
 });
 
-// --- 회원가입
 app.post("/api/signup", async (req, res) => {
   const { username, password, nickname } = req.body;
   if (!username || !password || !nickname) return res.status(400).json({ error: "모든 항목을 입력하세요" });
-
-  // 중복 확인
   const exists = db.data.users.find(u => u.username === username);
   if (exists) return res.status(400).json({ error: "이미 사용 중인 아이디입니다" });
-
   const user = { id: Date.now(), username, password, nickname };
   db.data.users.push(user);
   await saveDB();
   return res.json({ success: true, message: "회원가입 완료" });
 });
 
-// --- 로그인
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: "아이디/비밀번호 입력" });
 
-  // 관리자 로그인 분기
   if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
     req.session.isAdmin = true;
     req.session.user = { id: 0, username: ADMIN_USERNAME, nickname: "관리자" };
@@ -87,7 +82,6 @@ app.post("/api/login", (req, res) => {
   return res.json({ success: true, nickname: user.nickname });
 });
 
-// --- 로그아웃
 app.post("/api/logout", (req, res) => {
   req.session.destroy(err => {
     if (err) return res.status(500).json({ error: "로그아웃 실패" });
@@ -95,13 +89,11 @@ app.post("/api/logout", (req, res) => {
   });
 });
 
-// --- 게시글 목록 (최신순)
 app.get("/api/posts", (req, res) => {
-  const list = (db.data.posts || []).slice().sort((a,b)=>b.id-a.id);
+  const list = (db.data.posts || []).slice().sort((a, b) => b.id - a.id);
   res.json({ posts: list });
 });
 
-// --- 게시글 작성
 app.post("/api/posts", requireLogin, async (req, res) => {
   const { title, content } = req.body;
   const user = req.session.user;
@@ -121,14 +113,12 @@ app.post("/api/posts", requireLogin, async (req, res) => {
   res.json({ success: true, post: newPost });
 });
 
-// --- 특정 게시글 조회
 app.get("/api/posts/:id", (req, res) => {
   const post = db.data.posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: "게시글을 찾을 수 없습니다" });
   res.json({ post });
 });
 
-// --- 댓글 작성
 app.post("/api/posts/:id/comments", requireLogin, async (req, res) => {
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: "댓글 내용을 입력하세요" });
@@ -143,7 +133,6 @@ app.post("/api/posts/:id/comments", requireLogin, async (req, res) => {
   res.json({ success: true, post });
 });
 
-// --- 게시글 삭제 (작성자 or 관리자)
 app.delete("/api/posts/:id", requireLogin, async (req, res) => {
   const postId = Number(req.params.id);
   const post = db.data.posts.find(p => p.id === postId);
@@ -157,7 +146,6 @@ app.delete("/api/posts/:id", requireLogin, async (req, res) => {
   res.json({ success: true });
 });
 
-// --- 게시글 수정 (작성자만)
 app.put("/api/posts/:id", requireLogin, async (req, res) => {
   const postId = Number(req.params.id);
   const { title, content } = req.body;
@@ -172,13 +160,11 @@ app.put("/api/posts/:id", requireLogin, async (req, res) => {
   res.json({ success: true, post });
 });
 
-// --- 관리자: 사용자 목록
 app.get("/api/admin/users", requireAdmin, (req, res) => {
   const users = (db.data.users || []).map(u => ({ id: u.id, username: u.username, nickname: u.nickname }));
   res.json({ users });
 });
 
-// --- 관리자: 게시글 삭제 (관리자 전용)
 app.delete("/api/admin/posts/:id", requireAdmin, async (req, res) => {
   const postId = Number(req.params.id);
   db.data.posts = db.data.posts.filter(p => p.id !== postId);
@@ -186,15 +172,12 @@ app.delete("/api/admin/posts/:id", requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-// --- 관리자: DB 초기화
 app.post("/api/admin/reset", requireAdmin, async (req, res) => {
   db.data = { users: [], posts: [] };
   await saveDB();
   res.json({ success: true });
 });
 
-// --- 기본 라우트 (static이 처리)
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-// --- 서버 시작
 app.listen(PORT, () => console.log(`✅ 서버 실행 중: http://localhost:${PORT}`));
