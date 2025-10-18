@@ -1,69 +1,66 @@
-// ✅ 글 목록 불러오기
-if (location.pathname.endsWith("index.html") || location.pathname === "/") {
-  fetch("/api/posts")
-    .then((res) => res.json())
-    .then((posts) => {
-      const list = document.getElementById("posts");
-      list.innerHTML = posts
-        .map(
-          (p) => `
-        <div class="post" onclick="location.href='view.html?id=${p.id}'">
-          <h3>${p.title}</h3>
-          <p>${p.content.slice(0, 60)}...</p>
-          <small>${new Date(p.createdAt).toLocaleString()}</small>
-        </div>`
-        )
-        .join("");
-    });
+let nickname = null;
+
+async function fetchPosts() {
+  const res = await fetch("/posts");
+  const posts = await res.json();
+  const postsDiv = document.getElementById("posts");
+  postsDiv.innerHTML = "";
+  posts.forEach(post => {
+    const div = document.createElement("div");
+    div.className = "post";
+    div.innerHTML = `
+      <h4>${post.title} - ${post.author}</h4>
+      <p>${post.content}</p>
+      <button onclick="showCommentBox(${post.id})">댓글</button>
+      <div id="comments-${post.id}">
+        ${post.comments.map(c => `<div class="comment">${c.author}: ${c.content}</div>`).join("")}
+      </div>
+      <div id="comment-box-${post.id}" style="display:none;">
+        <input type="text" id="comment-input-${post.id}" placeholder="댓글 내용">
+        <button onclick="addComment(${post.id})">작성</button>
+      </div>
+    `;
+    postsDiv.appendChild(div);
+  });
 }
 
-// ✅ 글 작성
-function submitPost() {
-  const title = document.getElementById("title").value.trim();
-  const content = document.getElementById("content").value.trim();
-  if (!title || !content) return alert("제목과 내용을 입력하세요!");
-
-  fetch("/api/posts", {
+async function addPost() {
+  const title = document.getElementById("title").value;
+  const content = document.getElementById("content").value;
+  const res = await fetch("/posts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, content }),
-  })
-    .then((r) => r.json())
-    .then(() => location.href = "index.html");
+    body: JSON.stringify({ title, content })
+  });
+  const data = await res.json();
+  if (data.success) fetchPosts();
+  else alert(data.error);
 }
 
-// ✅ 글 보기 + 댓글
-if (location.pathname.endsWith("view.html")) {
-  const id = new URLSearchParams(location.search).get("id");
-  fetch("/api/posts")
-    .then((r) => r.json())
-    .then((posts) => {
-      const post = posts.find((p) => p.id == id);
-      if (!post) return (document.body.innerHTML = "<p>글을 찾을 수 없습니다.</p>");
-      document.getElementById("post").innerHTML = `
-        <div class="post">
-          <h2>${post.title}</h2>
-          <p>${post.content}</p>
-          <hr>
-          <h4>답장</h4>
-          ${
-            post.replies.length
-              ? post.replies.map(r => `<p>• ${r.content}</p>`).join("")
-              : "<p>아직 답장이 없습니다.</p>"
-          }
-        </div>`;
-    });
+function showCommentBox(id) {
+  const box = document.getElementById(`comment-box-${id}`);
+  box.style.display = box.style.display === "none" ? "block" : "none";
 }
 
-// ✅ 댓글 작성
-function submitReply() {
-  const id = new URLSearchParams(location.search).get("id");
-  const content = document.getElementById("reply").value.trim();
-  if (!content) return alert("답장 내용을 입력하세요!");
-
-  fetch(`/api/posts/${id}/reply`, {
+async function addComment(postId) {
+  const input = document.getElementById(`comment-input-${postId}`);
+  const content = input.value;
+  const res = await fetch(`/posts/${postId}/comments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
-  }).then(() => location.reload());
+    body: JSON.stringify({ content })
+  });
+  const data = await res.json();
+  if (data.success) {
+    fetchPosts();
+    input.value = "";
+  } else alert(data.error);
 }
+
+async function logout() {
+  await fetch("/logout", { method: "POST" });
+  nickname = null;
+  document.getElementById("user-area").innerText = "";
+}
+
+fetchPosts();
