@@ -3,30 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="style.css">
 <title>회원가입</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="container">
-  <h2>회원가입</h2>
-  <input type="text" id="username" placeholder="아이디">
-  <input type="text" id="nickname" placeholder="닉네임">
-  <input type="password" id="password" placeholder="비밀번호">
-  <button onclick="signup()">회원가입</button>
+  <h1>회원가입</h1>
+  <input id="nickname" placeholder="닉네임">
+  <input id="password" type="password" placeholder="비밀번호">
+  <button id="signupBtn">회원가입</button>
+  <p>이미 계정이 있으면 <a href="login.html">로그인</a></p>
+  <a href="index.html">뒤로</a>
 </div>
 <script>
-async function signup() {
-  const username = document.getElementById("username").value;
+document.getElementById("signupBtn").onclick = async () => {
   const nickname = document.getElementById("nickname").value;
   const password = document.getElementById("password").value;
   const res = await fetch("/signup", {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({username, nickname, password})
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({nickname, password})
   });
   const data = await res.json();
-  if(data.success) alert("가입 완료!");
-  else alert(data.error);
+  if (data.success) {
+    alert("회원가입 성공! 로그인해주세요.");
+    window.location.href = "login.html";
+  } else {
+    alert(data.error);
+  }
 }
 </script>
 </body>
