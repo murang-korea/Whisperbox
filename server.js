@@ -1,63 +1,107 @@
 import express from "express";
-import fs from "fs";
+import session from "express-session";
+import bodyParser from "body-parser";
+import fs from "fs-extra";
 import path from "path";
-import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 10000;
-const DATA_FILE = path.join(__dirname, "data.json");
 
+const DB_FILE = path.resolve("./db.json");
+
+// JSON 초기화
+if (!fs.existsSync(DB_FILE)) {
+  fs.writeJsonSync(DB_FILE, { users: [], posts: [] });
+}
+
+// 미들웨어
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({
+  secret: "secret_key",
+  resave: false,
+  saveUninitialized: true
+}));
 app.use(express.static("public"));
-app.use(express.json());
 
-// ✅ 데이터 로드
-function loadData() {
-  if (!fs.existsSync(DATA_FILE)) return { posts: [] };
-  return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-}
+// 유틸
+const readDB = () => fs.readJsonSync(DB_FILE);
+const writeDB = (data) => fs.writeJsonSync(DB_FILE, data);
 
-// ✅ 데이터 저장
-function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
+// 로그인 확인
+const requireLogin = (req, res, next) => {
+  if (!req.session.userId) return res.status(401).json({ error: "로그인 필요" });
+  next();
+};
 
-// 📄 모든 글 가져오기
-app.get("/api/posts", (req, res) => {
-  res.json(loadData().posts);
+// 회원가입
+app.post("/signup", (req, res) => {
+  const { username, nickname, password } = req.body;
+  if (!username || !password || !nickname) return res.status(400).json({ error: "모든 항목 필요" });
+
+  const db = readDB();
+  if (db.users.find(u => u.username === username)) return res.status(400).json({ error: "이미 존재하는 아이디" });
+
+  db.users.push({ id: Date.now(), username, nickname, password });
+  writeDB(db);
+  res.json({ success: true });
 });
 
-// ✏️ 새 글 작성
-app.post("/api/posts", (req, res) => {
-  const { title, content } = req.body;
-  if (!title || !content) return res.status(400).json({ error: "빈칸 있음!" });
+// 로그인
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  const db = readDB();
+  const user = db.users.find(u => u.username === username && u.password === password);
+  if (!user) return res.status(400).json({ error: "아이디 또는 비밀번호 틀림" });
 
-  const data = loadData();
-  const newPost = {
+  req.session.userId = user.id;
+  req.session.nickname = user.nickname;
+  res.json({ success: true, nickname: user.nickname });
+});
+
+// 로그아웃
+app.post("/logout", (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
+});
+
+// 게시글 목록
+app.get("/posts", (req, res) => {
+  const db = readDB();
+  res.json(db.posts);
+});
+
+// 게시글 작성
+app.post("/posts", requireLogin, (req, res) => {
+  const { title, content } = req.body;
+  if (!title || !content) return res.status(400).json({ error: "제목/내용 필요" });
+
+  const db = readDB();
+  const post = {
     id: Date.now(),
     title,
     content,
-    likes: 0,
-    replies: [],
-    createdAt: new Date().toISOString(),
+    author: req.session.nickname,
+    comments: []
   };
-  data.posts.unshift(newPost);
-  saveData(data);
-  res.json(newPost);
+  db.posts.push(post);
+  writeDB(db);
+  res.json({ success: true, post });
 });
 
-// 💬 댓글 달기
-app.post("/api/posts/:id/reply", (req, res) => {
+// 댓글 작성
+app.post("/posts/:id/comments", requireLogin, (req, res) => {
   const { content } = req.body;
-  const { id } = req.params;
-  const data = loadData();
-  const post = data.posts.find((p) => p.id == id);
-  if (!post) return res.status(404).json({ error: "글 없음" });
+  const postId = parseInt(req.params.id);
+  if (!content) return res.status(400).json({ error: "내용 필요" });
 
-  const reply = { id: Date.now(), content };
-  post.replies.push(reply);
-  saveData(data);
-  res.json(reply);
+  const db = readDB();
+  const post = db.posts.find(p => p.id === postId);
+  if (!post) return res.status(404).json({ error: "게시글 없음" });
+
+  post.comments.push({ content, author: req.session.nickname, id: Date.now() });
+  writeDB(db);
+  res.json({ success: true, post });
 });
 
-app.listen(PORT, () => console.log(`✅ 서버 실행됨: ${PORT}`));
+app.listen(PORT, () => console.log(`✅ 서버 실행 중: ${PORT}`));
