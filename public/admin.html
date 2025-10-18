@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>관리자 - WhisperBox</title><link rel="stylesheet" href="style.css" /></head>
+<body>
+  <div class="header">🔧 WhisperBox - 관리자</div>
+  <div class="container">
+    <div class="card" id="adminCard">
+      <h3>관리자 로그인</h3>
+      <input id="adminUser" placeholder="관리자 아이디"/>
+      <input id="adminPass" type="password" placeholder="관리자 비밀번호"/>
+      <div class="row">
+        <button id="adminLoginBtn">로그인</button>
+        <button onclick="location.href='index.html'">뒤로</button>
+      </div>
+      <div id="adminArea" style="margin-top:12px; display:none">
+        <h4>유저 목록</h4>
+        <div id="usersList"></div>
+        <h4 style="margin-top:12px">게시글</h4>
+        <div id="adminPosts"></div>
+        <div style="margin-top:12px" class="row">
+          <button id="resetDBBtn">DB 초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="script.js"></script>
+<script>
+document.getElementById("adminLoginBtn").addEventListener("click", async ()=>{
+  const username = document.getElementById("adminUser").value.trim();
+  const password = document.getElementById("adminPass").value.trim();
+  const res = await fetch("/api/login", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if(data?.isAdmin || (data?.success && data?.nickname === "관리자")) {
+    alert("관리자 인증됨");
+    document.getElementById("adminArea").style.display = "block";
+    loadAdminData();
+  } else {
+    alert(data?.error || data?.message || "관리자 인증 실패");
+  }
+});
+
+async function loadAdminData(){
+  const usersRes = await fetch("/api/admin/users");
+  if(usersRes.ok){
+    const usersData = await usersRes.json();
+    document.getElementById("usersList").innerHTML = (usersData.users||[]).map(u => `<div>${u.username} (${u.nickname})</div>`).join("") || "<div>유저 없음</div>";
+  } else {
+    document.getElementById("usersList").innerText = "유저 목록 불러오기 실패";
+  }
+
+  const postsRes = await fetch("/api/posts");
+  const postsData = await postsRes.json();
+  const postsList = postsData.posts || [];
+  document.getElementById("adminPosts").innerHTML = postsList.map(p => `
+    <div style="border:1px solid #eee;padding:8px;border-radius:8px;margin-bottom:8px">
+      <div style="font-weight:700">${p.title} - ${p.author}</div>
+      <div style="font-size:13px;color:#666">${p.content.slice(0,120)}</div>
+      <div style="margin-top:6px"><button onclick="adminDeletePost(${p.id})">삭제</button></div>
+    </div>
+  `).join("") || "<div>게시글 없음</div>";
+}
+
+async function adminDeletePost(id){
+  if(!confirm("정말 삭제할까요?")) return;
+  const res = await fetch(`/api/admin/posts/${id}`, { method:"DELETE" });
+  if(res.ok){ alert("삭제 완료"); loadAdminData(); } else alert("삭제 실패");
+}
+
+document.getElementById("resetDBBtn").addEventListener("click", async ()=>{
+  if(!confirm("DB를 초기화하면 복구 불가합니다. 진행할까요?")) return;
+  const res = await fetch("/api/admin/reset", { method:"POST" });
+  if(res.ok) { alert("완료"); loadAdminData(); } else alert("실패");
+});
+</script>
+</body>
+</html>
