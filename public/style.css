@@ -8,41 +8,27 @@ body {
 .container {
   max-width: 800px;
   margin: auto;
-  padding: 10px;
+  padding: 20px;
 }
 
-header {
-  background: #007bff;
-  color: white;
-  padding: 10px;
-  text-align: center;
+input, textarea, button {
+  padding: 8px;
+  margin: 5px 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 button {
   cursor: pointer;
 }
 
-input, textarea {
-  width: 100%;
-  padding: 8px;
-  margin: 5px 0;
-  box-sizing: border-box;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-}
-
 .post, .comment {
-  background: white;
+  border: 1px solid #ddd;
   padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 5px;
+  margin: 10px 0;
+  background: #fff;
 }
 
 .comment {
   margin-left: 20px;
-  background: #f1f1f1;
-}
-
-@media (max-width: 600px) {
-  .container { padding: 5px; }
 }
