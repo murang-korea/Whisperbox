@@ -1,0 +1,18 @@
+{
+  "name": "Whisperbox",
+  "version": "1.0.0",
+  "description": "Responsive web app with AI chat functionality",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.7.2",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
