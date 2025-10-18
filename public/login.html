@@ -3,30 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="style.css">
 <title>로그인</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="container">
-  <h2>로그인</h2>
-  <input type="text" id="username" placeholder="아이디">
-  <input type="password" id="password" placeholder="비밀번호">
-  <button onclick="login()">로그인</button>
+  <h1>로그인</h1>
+  <input id="nickname" placeholder="닉네임">
+  <input id="password" type="password" placeholder="비밀번호">
+  <button id="loginBtn">로그인</button>
+  <p>회원이 아니면 <a href="signup.html">회원가입</a></p>
+  <a href="index.html">뒤로</a>
 </div>
 <script>
-async function login() {
-  const username = document.getElementById("username").value;
+document.getElementById("loginBtn").onclick = async () => {
+  const nickname = document.getElementById("nickname").value;
   const password = document.getElementById("password").value;
   const res = await fetch("/login", {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({username, password})
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({nickname, password})
   });
   const data = await res.json();
-  if(data.success) {
+  if (data.success) {
     alert("로그인 성공!");
-    location.href = "/";
-  } else alert(data.error);
+    window.location.href = "index.html";
+  } else {
+    alert(data.error);
+  }
 }
 </script>
 </body>
