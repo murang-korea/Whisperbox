@@ -1,65 +1,68 @@
 import express from "express";
 import bodyParser from "body-parser";
-import cors from "cors";
+import { Low } from "lowdb";
+import { JSONFile } from "lowdb/node";
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const port = process.env.PORT || 10000;
 
-app.use(cors());
+// DB 초기 설정
+const adapter = new JSONFile("db.json");
+const db = new Low(adapter, { users: [], posts: [] });
+
+await db.read();
+db.data ||= { users: [], posts: [] };
+
 app.use(bodyParser.json());
 app.use(express.static("public"));
 
-// 메모리 DB
-let users = []; // { nickname, password }
-let posts = []; // { id, title, content, author, comments: [{author, text}] }
-let nextPostId = 1;
-
 // 회원가입
-app.post("/signup", (req, res) => {
-  const { nickname, password } = req.body;
-  if (!nickname || !password) return res.status(400).json({ error: "빈 칸 있음" });
-  if (users.find(u => u.nickname === nickname)) return res.status(400).json({ error: "닉네임 중복" });
-  users.push({ nickname, password });
-  res.json({ success: true });
+app.post("/signup", async (req, res) => {
+  const { username, password, nickname } = req.body;
+  if (db.data.users.find(u => u.username === username)) {
+    return res.status(400).json({ message: "이미 존재하는 닉네임임" });
+  }
+  db.data.users.push({ username, password, nickname });
+  await db.write();
+  res.json({ message: "회원가입 완료" });
 });
 
 // 로그인
 app.post("/login", (req, res) => {
-  const { nickname, password } = req.body;
-  const user = users.find(u => u.nickname === nickname && u.password === password);
-  if (!user) return res.status(400).json({ error: "로그인 실패" });
-  res.json({ success: true });
+  const { username, password } = req.body;
+  const user = db.data.users.find(u => u.username === username && u.password === password);
+  if (!user) return res.status(401).json({ message: "로그인 실패" });
+  res.json({ message: "로그인 성공", nickname: user.nickname });
 });
 
 // 게시글 목록
 app.get("/posts", (req, res) => {
-  res.json(posts);
+  res.json(db.data.posts);
 });
 
 // 게시글 작성
-app.post("/posts", (req, res) => {
-  const { title, content, author } = req.body;
-  if (!title || !content || !author) return res.status(400).json({ error: "빈 칸 있음" });
-  const post = { id: nextPostId++, title, content, author, comments: [] };
-  posts.push(post);
-  res.json({ success: true, post });
+app.post("/posts", async (req, res) => {
+  const { title, content, nickname } = req.body;
+  const newPost = { id: Date.now(), title, content, nickname, comments: [] };
+  db.data.posts.push(newPost);
+  await db.write();
+  res.json(newPost);
 });
 
-// 게시글 상세보기
-app.get("/posts/:id", (req, res) => {
-  const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ error: "게시글 없음" });
+// 댓글 추가
+app.post("/posts/:id/comments", async (req, res) => {
+  const post = db.data.posts.find(p => p.id == req.params.id);
+  if (!post) return res.status(404).json({ message: "게시글 없음" });
+  post.comments.push({ text: req.body.text, nickname: req.body.nickname });
+  await db.write();
   res.json(post);
 });
 
-// 댓글 작성
-app.post("/posts/:id/comments", (req, res) => {
-  const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ error: "게시글 없음" });
-  const { author, text } = req.body;
-  if (!author || !text) return res.status(400).json({ error: "빈 칸 있음" });
-  post.comments.push({ author, text });
-  res.json({ success: true });
+// 초기화 (관리자용)
+app.post("/reset", async (req, res) => {
+  db.data = { users: [], posts: [] };
+  await db.write();
+  res.json({ message: "DB 초기화 완료" });
 });
 
-app.listen(PORT, () => console.log(`✅ 서버 실행 중 ${PORT}`));
+app.listen(port, () => console.log(`✅ 서버 실행 중: ${port}`));
