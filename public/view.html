@@ -1,52 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>게시글 보기</title>
-<link rel="stylesheet" href="style.css">
-</head>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>글 보기</title><link rel="stylesheet" href="style.css" /></head>
 <body>
-<div class="container">
-  <div id="post"></div>
-  <h3>댓글</h3>
-  <div id="comments"></div>
-  <input id="commentAuthor" placeholder="닉네임">
-  <input id="commentText" placeholder="댓글 내용">
-  <button id="commentSubmit">댓글 달기</button>
-  <a href="index.html">뒤로</a>
-</div>
-<script>
-const params = new URLSearchParams(location.search);
-const id = params.get("id");
+  <div class="header">💬 WhisperBox - 글 보기</div>
+  <div class="container">
+    <div id="postCard" class="card"></div>
 
-async function loadPost() {
-  const res = await fetch("/posts/" + id);
-  const post = await res.json();
-  document.getElementById("post").innerHTML =
-    `<h2>${post.title}</h2><p>${post.content}</p><p>작성자: ${post.author}</p>`;
-  const commentsDiv = document.getElementById("comments");
-  commentsDiv.innerHTML = "";
-  post.comments.forEach(c => {
-    const div = document.createElement("div");
-    div.className = "comment";
-    div.innerText = `${c.author}: ${c.text}`;
-    commentsDiv.appendChild(div);
+    <div class="card">
+      <h3>댓글</h3>
+      <div id="commentsArea"></div>
+      <div id="replyForm" style="display:block;margin-top:8px">
+        <textarea id="replyText" rows="3" placeholder="댓글을 입력하세요"></textarea>
+        <div class="row"><button id="replyBtn">댓글 달기</button><button onclick="location.href='index.html'">목록으로</button></div>
+      </div>
+    </div>
+  </div>
+
+<script src="script.js"></script>
+<script>
+(async function(){
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  if(!id) { alert("잘못된 접근"); location.href="index.html"; return; }
+  await showCurrentUser(); // 비로그인자도 읽기 가능
+  await loadPost(id);
+
+  document.getElementById("replyBtn").addEventListener("click", async ()=>{
+    const text = document.getElementById("replyText").value.trim();
+    if(!text) return alert("댓글을 입력하세요");
+    const res = await fetch(`/api/posts/${id}/comments`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if(data?.success){ await loadPost(id); document.getElementById("replyText").value=""; }
+    else if(data?.error) alert(data.error);
+    else alert("댓글 실패");
   });
-}
-document.getElementById("commentSubmit").onclick = async () => {
-  const author = document.getElementById("commentAuthor").value;
-  const text = document.getElementById("commentText").value;
-  const res = await fetch(`/posts/${id}/comments`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({author, text})
-  });
-  const data = await res.json();
-  if (data.success) loadPost();
-  else alert(data.error);
-}
-loadPost();
+})();
 </script>
 </body>
 </html>
