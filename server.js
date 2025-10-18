@@ -21,8 +21,8 @@ app.use(bodyParser.json());
 app.use(express.static("public"));
 
 // 관리자 계정 (여기서만 설정)
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "1234";
+const ADMIN_USERNAME = "woojik";
+const ADMIN_PASSWORD = "myaptitude";
 
 // 🧾 회원가입
 app.post("/signup", async (req, res) => {
