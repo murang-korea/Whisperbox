@@ -88,8 +88,14 @@ app.post("/api/logout",(req,res)=>{
 
 // --- 게시글 목록
 app.get("/api/posts",(req,res)=>{
-  const list = (db.data.posts||[]).slice().sort((a,b)=>b.id-a.id);
-  res.json({posts:list});
+  // --- lowdb 설정 (오류 없는 안전한 방식)
+const defaultData = { users: [], posts: [] };
+const adapter = new JSONFile(path.join(__dirname, "db.json"));
+const db = new Low(adapter, defaultData);
+
+await db.read();
+if (!db.data) db.data = defaultData; // ✅ 누락 방지
+await db.write();
 });
 
 // --- 게시글 작성
