@@ -1,37 +1,35 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>로그인</title>
-<link rel="stylesheet" href="style.css">
-</head>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>로그인</title><link rel="stylesheet" href="style.css" /></head>
 <body>
-<div class="container">
-  <h1>로그인</h1>
-  <input id="nickname" placeholder="닉네임">
-  <input id="password" type="password" placeholder="비밀번호">
-  <button id="loginBtn">로그인</button>
-  <p>회원이 아니면 <a href="signup.html">회원가입</a></p>
-  <a href="index.html">뒤로</a>
-</div>
+  <div class="header">🔐 WhisperBox - 로그인</div>
+  <div class="container">
+    <div class="card">
+      <input id="username" placeholder="아이디" />
+      <input id="password" type="password" placeholder="비밀번호" />
+      <div class="row">
+        <button id="loginBtn">로그인</button>
+        <button onclick="location.href='signup.html'">회원가입</button>
+      </div>
+      <div style="margin-top:8px"><a href="index.html">목록으로</a></div>
+    </div>
+  </div>
+
+<script src="script.js"></script>
 <script>
-document.getElementById("loginBtn").onclick = async () => {
-  const nickname = document.getElementById("nickname").value;
-  const password = document.getElementById("password").value;
-  const res = await fetch("/login", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({nickname, password})
+document.getElementById("loginBtn").addEventListener("click", async ()=>{
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  if(!username || !password) return alert("아이디/비밀번호 입력");
+  const res = await fetch("/api/login", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ username, password })
   });
   const data = await res.json();
-  if (data.success) {
-    alert("로그인 성공!");
-    window.location.href = "index.html";
-  } else {
-    alert(data.error);
-  }
-}
+  if(data?.success) { location.href="index.html"; }
+  else alert(data?.error || data?.message || "로그인 실패");
+});
 </script>
 </body>
 </html>
