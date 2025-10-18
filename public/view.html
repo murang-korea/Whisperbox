@@ -1,18 +1,52 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WhisperBox</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>게시글 보기</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>글 보기</header>
-  <div class="container" id="post"></div>
-  <div class="container">
-    <textarea id="reply" rows="3" placeholder="답장을 남겨주세요..."></textarea>
-    <button onclick="submitReply()">답장 보내기</button>
-  </div>
-  <script src="script.js"></script>
+<div class="container">
+  <div id="post"></div>
+  <h3>댓글</h3>
+  <div id="comments"></div>
+  <input id="commentAuthor" placeholder="닉네임">
+  <input id="commentText" placeholder="댓글 내용">
+  <button id="commentSubmit">댓글 달기</button>
+  <a href="index.html">뒤로</a>
+</div>
+<script>
+const params = new URLSearchParams(location.search);
+const id = params.get("id");
+
+async function loadPost() {
+  const res = await fetch("/posts/" + id);
+  const post = await res.json();
+  document.getElementById("post").innerHTML =
+    `<h2>${post.title}</h2><p>${post.content}</p><p>작성자: ${post.author}</p>`;
+  const commentsDiv = document.getElementById("comments");
+  commentsDiv.innerHTML = "";
+  post.comments.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "comment";
+    div.innerText = `${c.author}: ${c.text}`;
+    commentsDiv.appendChild(div);
+  });
+}
+document.getElementById("commentSubmit").onclick = async () => {
+  const author = document.getElementById("commentAuthor").value;
+  const text = document.getElementById("commentText").value;
+  const res = await fetch(`/posts/${id}/comments`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({author, text})
+  });
+  const data = await res.json();
+  if (data.success) loadPost();
+  else alert(data.error);
+}
+loadPost();
+</script>
 </body>
 </html>
