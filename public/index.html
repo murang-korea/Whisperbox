@@ -1,17 +1,31 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WhisperBox</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style.css">
+<title>게시판</title>
 </head>
 <body>
-  <header>Whisperbox</header>
-  <div class="container">
-    <div id="posts"></div>
-    <button onclick="location.href='write.html'">✏️ 고민 작성하기</button>
-  </div>
-  <script src="script.js"></script>
+<div class="container">
+  <header>
+    <h1>게시판</h1>
+    <div id="user-area"></div>
+  </header>
+
+  <button onclick="location.href='signup.html'">회원가입</button>
+  <button onclick="location.href='login.html'">로그인</button>
+  <button onclick="logout()">로그아웃</button>
+
+  <h2>게시글</h2>
+  <div id="posts"></div>
+
+  <h3>글 작성</h3>
+  <input type="text" id="title" placeholder="제목">
+  <textarea id="content" placeholder="내용"></textarea>
+  <button onclick="addPost()">작성</button>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
