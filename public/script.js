@@ -1,7 +1,7 @@
 window.__WB_CURRENT_USER = null;
 
 export async function showCurrentUser(requireLogin=false){
-  try{
+  try {
     const res = await fetch("/api/me");
     const data = await res.json();
     const user = data.user || null;
@@ -10,7 +10,10 @@ export async function showCurrentUser(requireLogin=false){
     const userArea = document.getElementById("userArea");
     if(userArea){
       if(user){
-        userArea.innerHTML = `<div style="text-align:right"><small>안녕하세요, <strong>${escapeHtml(user.nickname)}</strong></small><div style="margin-top:6px"><button onclick="doLogout()">로그아웃</button></div></div>`;
+        userArea.innerHTML = `<div style="text-align:right">
+          <small><strong>${escapeHtml(user.nickname)}</strong></small>
+          <div><button onclick="doLogout()">로그아웃</button></div>
+        </div>`;
       } else {
         userArea.innerHTML = `<div style="text-align:right"><small class="muted">비로그인</small></div>`;
       }
@@ -24,20 +27,33 @@ export async function showCurrentUser(requireLogin=false){
 window.doLogout = async function(){
   const res = await fetch("/api/logout",{method:"POST"});
   if(res.ok){ window.__WB_CURRENT_USER=null; location.href="index.html"; }
-  else alert("로그아웃 실패");
 }
 
-export async function loadPosts(query){
-  try{
+export async function loadPosts(query, sortType="random"){
+  try {
     const res = await fetch("/api/posts");
-    if(!res.ok) throw new Error("posts fetch fail");
     const data = await res.json();
     let posts = data.posts || [];
+
     if(query){
       const q = query.toLowerCase();
-      posts = posts.filter(p => (p.title||"").toLowerCase().includes(q) || (p.content||"").toLowerCase().includes(q) || (p.author||"").toLowerCase().includes(q));
+      posts = posts.filter(p =>
+        (p.title||"").toLowerCase().includes(q) ||
+        (p.content||"").toLowerCase().includes(q) ||
+        (p.author||"").toLowerCase().includes(q)
+      );
     }
-    posts.sort(()=>Math.random()-0.5); // 랜덤
+
+    switch(sortType){
+      case "latest":
+        posts.sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt)); break;
+      case "likes":
+        posts.sort((a,b)=> (b.likes||0) - (a.likes||0)); break;
+      case "comments":
+        posts.sort((a,b)=> (b.comments?.length||0) - (a.comments?.length||0)); break;
+      default:
+        posts.sort(()=>Math.random()-0.5);
+    }
 
     const container = document.getElementById("postsList");
     if(!container) return;
@@ -47,12 +63,13 @@ export async function loadPosts(query){
       <div class="card">
         <div class="post-title"><a href="view.html?id=${p.id}">${escapeHtml(p.title)}</a></div>
         <div class="post-meta">${escapeHtml(p.author)} · ${new Date(p.createdAt).toLocaleString()}</div>
-        <div style="margin-top:8px">${escapeHtml(truncate(p.content,200))}</div>
-        <div style="margin-top:10px" class="actions">
-          <button onclick="location.href='view.html?id=${p.id}'">열기</button>
+        <div>${escapeHtml(truncate(p.content,150))}</div>
+        <div class="post-info" style="margin-top:6px; font-size:13px;">
+          ❤️ ${p.likes||0} · 💬 ${p.comments?.length||0}
         </div>
       </div>
     `).join("");
+
   } catch(e){
     console.error(e);
     const container = document.getElementById("postsList");
@@ -61,29 +78,29 @@ export async function loadPosts(query){
 }
 
 export async function loadPost(id){
-  try{
-    const res = await fetch("/api/posts/"+id);
-    if(!res.ok) throw new Error("post fetch fail");
+  try {
+    const res = await fetch(`/api/posts/${id}`);
     const data = await res.json();
     const p = data.post;
-    if(!p){ document.getElementById("postCard").innerHTML="<div>글 없음</div>"; return; }
+    if(!p) return document.getElementById("postCard").innerHTML="<div>글 없음</div>";
 
     document.getElementById("postCard").innerHTML = `
       <div class="post-title">${escapeHtml(p.title)}</div>
       <div class="post-meta">${escapeHtml(p.author)} · ${new Date(p.createdAt).toLocaleString()}</div>
       <div style="margin-top:10px">${escapeHtml(p.content)}</div>
-      <div style="margin-top:10px" class="actions">
-        ${ window.__WB_CURRENT_USER && window.__WB_CURRENT_USER.username===p.authorUsername ? `<button onclick="editPost(${p.id})">수정</button><button onclick="deletePost(${p.id})">삭제</button>` : "" }
+      <div class="actions" style="margin-top:10px">
+        <button onclick="likePost(${p.id})">❤️ 좋아요 (${p.likes||0})</button>
         <button onclick="location.href='index.html'">목록</button>
       </div>
     `;
 
     const ca = document.getElementById("commentsArea");
-    ca.innerHTML = (p.comments && p.comments.length) ? p.comments.map(c=>`
-      <div class="comment"><strong>${escapeHtml(c.author)}</strong> · ${new Date(c.createdAt).toLocaleString()}
-        <div style="margin-top:6px">${escapeHtml(c.text)}</div>
-      </div>
-    `).join("") : "<div class='muted'>댓글이 없습니다</div>";
+    ca.innerHTML = (p.comments?.length)
+      ? p.comments.map(c=>`
+        <div class="comment"><strong>${escapeHtml(c.author)}</strong> · ${new Date(c.createdAt).toLocaleString()}
+          <div>${escapeHtml(c.text)}</div>
+        </div>`).join("")
+      : "<div class='muted'>댓글이 없습니다</div>";
 
   } catch(e){
     console.error(e);
@@ -91,11 +108,10 @@ export async function loadPost(id){
   }
 }
 
-window.deletePost = async function(id){
-  if(!confirm("정말 삭제할까요?")) return;
-  const res = await fetch(`/api/posts/${id}`,{method:"DELETE"});
-  if(res.ok){ alert("삭제됨"); location.href="index.html"; }
-  else { const j=await res.json().catch(()=>({})); alert(j.error || "삭제 실패"); }
+window.likePost = async function(id){
+  const res = await fetch(`/api/posts/${id}/like`,{method:"POST"});
+  const data = await res.json();
+  if(data?.success) loadPost(id);
 }
 
 function escapeHtml(s){ if(!s) return ""; return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
