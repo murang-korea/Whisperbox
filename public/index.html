@@ -1,43 +1,125 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>WhisperBox - 목록</title>
-<link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WhisperBox - 목록</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="header">💌 WhisperBox - 고민함</div>
-<div class="container">
-  <div class="card" id="topbar">
-    <div class="row">
-      <div class="col">
-        <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)" />
+  <div class="header">💌 WhisperBox - 고민함</div>
+  <div class="container">
+    <div class="card" id="topbar">
+      <div class="row">
+        <div class="col">
+          <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)"/>
+        </div>
+        <div style="width:160px">
+          <div id="userArea"></div>
+        </div>
       </div>
-      <div style="width:160px">
-        <div id="userArea"></div>
+      <div style="margin-top:10px" class="actions">
+        <button onclick="location.href='write.html'">✏️ 글쓰기</button>
+        <button onclick="location.href='login.html'">로그인</button>
+        <button onclick="location.href='signup.html'">회원가입</button>
+        <button onclick="location.href='admin.html'">관리자</button>
       </div>
     </div>
-    <div style="margin-top:10px" class="actions">
-      <button onclick="location.href='write.html'">✏️ 글쓰기</button>
-      <button onclick="location.href='login.html'">로그인</button>
-      <button onclick="location.href='signup.html'">회원가입</button>
-      <button onclick="location.href='admin.html'">관리자</button>
-    </div>
+
+    <div id="postsList"></div>
   </div>
-  <div id="postsList"></div>
-</div>
 
-<script type="module" src="script.js"></script>
-<script>
-(async function(){
-  await showCurrentUser();
-  await loadPosts();
+<script type="module">
+  // --- 유틸 함수 ---
+  let __WB_CURRENT_USER = null;
 
-  document.getElementById("searchInput").addEventListener("input", async (e)=>{
-    await loadPosts(e.target.value.trim());
-  });
-})();
+  async function showCurrentUser(requireLogin=false){
+    try{
+      const res = await fetch("/api/me");
+      const data = await res.json();
+      const user = data.user || null;
+      __WB_CURRENT_USER = user;
+      const userArea = document.getElementById("userArea");
+      if(userArea){
+        if(user){
+          userArea.innerHTML = `<div style="text-align:right">
+            <small>안녕하세요, <strong>${escapeHtml(user.nickname)}</strong></small>
+            <div style="margin-top:6px">
+              <button onclick="doLogout()">로그아웃</button>
+            </div>
+          </div>`;
+        } else {
+          userArea.innerHTML = `<div style="text-align:right"><small class="muted">비로그인</small></div>`;
+        }
+      }
+      if(requireLogin && !user){
+        alert("로그인이 필요합니다.");
+        location.href = "login.html";
+        return null;
+      }
+      return user;
+    } catch(e){
+      console.error(e);
+      return null;
+    }
+  }
+
+  async function doLogout(){
+    const res = await fetch("/api/logout", { method:"POST" });
+    if(res.ok) { __WB_CURRENT_USER=null; location.href="index.html"; }
+    else alert("로그아웃 실패");
+  }
+
+  // --- escape
+  function escapeHtml(s){ if(!s) return ""; return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
+  function truncate(s,n){ if(!s) return ""; return s.length>n ? s.slice(0,n)+"..." : s; }
+
+  // --- 게시글 로드
+  async function loadPosts(query){
+    try{
+      const res = await fetch("/api/posts");
+      const data = await res.json();
+      let posts = data.posts || [];
+      
+      // 검색
+      if(query){
+        const q = query.toLowerCase();
+        posts = posts.filter(p => (p.title||"").toLowerCase().includes(q) ||
+                                   (p.content||"").toLowerCase().includes(q) ||
+                                   (p.author||"").toLowerCase().includes(q));
+      }
+
+      // 랜덤 섞기
+      posts.sort(()=>Math.random() - 0.5);
+
+      const container = document.getElementById("postsList");
+      if(!container) return;
+      if(posts.length===0){ container.innerHTML = `<div class="card muted">게시글이 없습니다</div>`; return; }
+
+      container.innerHTML = posts.map(p=>`
+        <div class="card">
+          <div class="post-title"><a href="view.html?id=${p.id}">${escapeHtml(p.title)}</a></div>
+          <div class="post-meta small muted">${escapeHtml(p.author)} · ${new Date(p.createdAt).toLocaleString()}</div>
+          <div style="margin-top:8px">${escapeHtml(truncate(p.content,200))}</div>
+          <div style="margin-top:10px" class="actions">
+            <button onclick="location.href='view.html?id=${p.id}'">열기</button>
+          </div>
+        </div>
+      `).join("");
+    } catch(e){
+      console.error(e);
+      document.getElementById("postsList").innerHTML = `<div class="card muted">게시글 불러오기 실패</div>`;
+    }
+  }
+
+  // --- 초기화
+  (async function(){
+    await showCurrentUser();
+    await loadPosts();
+    document.getElementById("searchInput").addEventListener("input", async (e)=>{
+      await loadPosts(e.target.value.trim());
+    });
+  })();
 </script>
 </body>
 </html>
