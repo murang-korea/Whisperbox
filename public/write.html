@@ -23,32 +23,30 @@
 <script src="script.js"></script>
 <script>
 (async function(){
-  // showCurrentUser는 window.showCurrentUser로 존재해야 함
-  const user = await showCurrentUser(true);
-  if(!user) return; // 로그인 필요
+  const user = await showCurrentUser(true); // 로그인 확인
+  if(!user) return;
 
   document.getElementById("submitBtn").addEventListener("click", async function(){
     const title = document.getElementById("title").value.trim();
     const content = document.getElementById("content").value.trim();
-    if(!title || !content){ alert("제목과 내용을 입력하세요"); return; }
+    if(!title || !content){
+      alert("제목과 내용을 입력하세요");
+      return;
+    }
 
-    // 사용자에게 시각적 피드백
     this.disabled = true;
     this.textContent = "작성 중...";
 
-    const r = await postNew(title, content);
+    const result = await postNew(title, content);
 
     this.disabled = false;
     this.textContent = "작성하기";
 
-    if(!r.ok){
-      // 네트워크/서버 에러
-      alert("작성 실패: " + (r.data?.error || r.error || ("status " + r.status)));
-      console.error("post response:", r);
+    if(!result.ok){
+      alert("작성 실패: " + (result.data?.error || result.error || ("status " + result.status)));
       return;
     }
 
-    // 성공
     alert("작성 완료!");
     location.href = "index.html";
   });
