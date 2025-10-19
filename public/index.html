@@ -14,15 +14,20 @@
         <div class="col">
           <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)"/>
         </div>
-        <div style="width:160px">
-          <div id="userArea"></div>
-        </div>
+        <div style="width:160px" id="userArea"></div>
       </div>
+
+      <div style="margin-top:8px">
+        <select id="sortSelect">
+          <option value="random">랜덤</option>
+          <option value="latest">최신순</option>
+          <option value="likes">좋아요 많은 순</option>
+          <option value="comments">댓글 많은 순</option>
+        </select>
+      </div>
+
       <div style="margin-top:10px" class="actions">
         <button onclick="location.href='write.html'">✏️ 글쓰기</button>
-        <button onclick="location.href='login.html'">로그인</button>
-        <button onclick="location.href='signup.html'">회원가입</button>
-        <button onclick="location.href='admin.html'">관리자</button>
       </div>
     </div>
 
@@ -35,9 +40,8 @@
   await showCurrentUser();
   await loadPosts();
 
-  document.getElementById("searchInput").addEventListener("input", async (e)=>{
-    await loadPosts(e.target.value.trim());
-  });
+  document.getElementById("searchInput").addEventListener("input", e => loadPosts(e.target.value.trim()));
+  document.getElementById("sortSelect").addEventListener("change", e => loadPosts(undefined, e.target.value));
 })();
 </script>
 </body>
