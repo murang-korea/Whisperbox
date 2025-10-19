@@ -93,22 +93,27 @@ app.get("/api/posts",(req,res)=>{
   res.json({posts:list});
 });
 
-// --- 게시글 작성
-app.post("/api/posts", requireLogin, async (req,res)=>{
-  const {title, content} = req.body;
-  if(!title||!content) return res.status(400).json({error:"제목과 내용 입력"});
+// 글 작성
+app.post("/api/posts", async (req,res)=>{
   const user = req.session.user;
+  if(!user) return res.json({error:"로그인이 필요합니다."});
+
+  const { title, content } = req.body;
+  if(!title || !content) return res.json({error:"입력 누락"});
+
   const newPost = {
-    id:Date.now(),
+    id: Date.now(),
     title,
     content,
-    author:user.nickname,
-    authorUsername:user.username,
-    comments:[],
-    createdAt:new Date().toISOString()
+    author: user.nickname,
+    authorUsername: user.username,
+    createdAt: new Date(),
+    likes: 0,
+    comments: []
   };
+
   db.data.posts.push(newPost);
-  await saveDB();
+  await db.write();
   res.json({success:true, post:newPost});
 });
 
