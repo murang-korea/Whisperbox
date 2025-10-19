@@ -1,33 +1,51 @@
 <!doctype html>
 <html lang="ko">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>글 보기</title><link rel="stylesheet" href="style.css" /></head>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>글 보기 - WhisperBox</title>
+<link rel="stylesheet" href="style.css" />
+</head>
 <body>
-<div class="header">💬 WhisperBox - 글 보기</div>
-<div class="container">
-  <div id="postCard" class="card"></div>
-  <div class="card">
-    <h3>댓글</h3>
-    <div id="commentsArea"></div>
-    <textarea id="replyText" rows="3" placeholder="댓글 입력"></textarea>
-    <div class="row"><button id="replyBtn">댓글 달기</button><button onclick="location.href='index.html'">목록</button></div>
+  <div class="header">💬 WhisperBox - 글 보기</div>
+  <div class="container">
+    <div id="postCard" class="card"></div>
+
+    <div class="card">
+      <h3>댓글</h3>
+      <div id="commentsArea"></div>
+      <div id="replyForm" style="display:block;margin-top:8px">
+        <textarea id="replyText" rows="3" placeholder="댓글을 입력하세요"></textarea>
+        <div class="row"><button id="replyBtn">댓글 달기</button><button onclick="location.href='index.html'">목록으로</button></div>
+      </div>
+    </div>
   </div>
-</div>
-<script src="script.js"></script>
-<script>
-(async()=>{
+
+<script type="module" src="script.js"></script>
+<script type="module">
+(async function(){
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
   if(!id){ alert("잘못된 접근"); location.href="index.html"; return; }
-  await showCurrentUser();
+
+  await showCurrentUser(); // 로그인 여부 확인
   await loadPost(id);
 
-  document.getElementById("replyBtn").addEventListener("click", async()=>{
-    const text=document.getElementById("replyText").value.trim();
-    if(!text) return alert("댓글 입력");
-    const res=await fetch(`/api/posts/${id}/comments`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
-    const data=await res.json();
-    if(data.success){ await loadPost(id); document.getElementById("replyText").value=""; }
-    else alert(data.error||"댓글 실패");
+  document.getElementById("replyBtn").addEventListener("click", async ()=>{
+    const text = document.getElementById("replyText").value.trim();
+    if(!text) return alert("댓글을 입력하세요");
+
+    const res = await fetch(`/api/posts/${id}/comments`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if(data?.success){ 
+      await loadPost(id);
+      document.getElementById("replyText").value="";
+    } else if(data?.error) alert(data.error);
+    else alert("댓글 실패");
   });
 })();
 </script>
