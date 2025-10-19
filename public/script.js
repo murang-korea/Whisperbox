@@ -68,14 +68,13 @@ window.postNew = async function(title, content) {
   }
 };
 
-// === 게시글 목록 불러오기 ===
+// === 게시글 목록 ===
 window.loadPosts = async function(search = "", sort = "latest") {
   try {
     const res = await fetch("/api/posts");
     const data = await res.json();
     const posts = data.posts || [];
 
-    // --- 검색 필터 ---
     let filtered = posts;
     if (search) {
       filtered = posts.filter(
@@ -86,13 +85,11 @@ window.loadPosts = async function(search = "", sort = "latest") {
       );
     }
 
-    // --- 정렬 ---
     if (sort === "random") filtered.sort(() => Math.random() - 0.5);
     else if (sort === "likes") filtered.sort((a, b) => b.likes - a.likes);
     else if (sort === "comments") filtered.sort((a, b) => b.comments.length - a.comments.length);
     else filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // --- 표시 ---
     const list = document.getElementById("postsList");
     if (!list) return;
     list.innerHTML =
@@ -117,13 +114,16 @@ window.loadPosts = async function(search = "", sort = "latest") {
   }
 };
 
-// === 게시글 1개 보기 ===
-window.loadPost = async function(id){
+// === 게시글 보기 ===
+window.loadPost = async function(id) {
   try {
     const res = await fetch(`/api/posts/${id}`);
-    if(!res.ok) throw new Error("글 불러오기 실패");
+    if (!res.ok) throw new Error("글 불러오기 실패");
     const data = await res.json();
     const post = data.post;
+
+    const likedPosts = JSON.parse(localStorage.getItem("likedPosts") || "[]");
+    const alreadyLiked = likedPosts.includes(id);
 
     const card = document.getElementById("postCard");
     card.innerHTML = `
@@ -134,7 +134,9 @@ window.loadPost = async function(id){
         <span>❤️ <span id="likeCount">${post.likes}</span></span>
       </div>
       <div style="margin-top:8px">
-        <button id="likeBtn">좋아요</button>
+        <button id="likeBtn" style="background:${alreadyLiked ? '#ffcccc' : ''}">
+          ${alreadyLiked ? "좋아요 취소" : "좋아요"}
+        </button>
       </div>
     `;
 
@@ -143,22 +145,40 @@ window.loadPost = async function(id){
     commentsArea.innerHTML =
       post.comments.length === 0
         ? `<p>댓글이 없습니다</p>`
-        : post.comments.map(
-            c => `<div class="comment">
-                    <b>${escapeHtml(c.author)}</b>: ${escapeHtml(c.text)}
-                  </div>`
-          ).join("");
+        : post.comments
+            .map(
+              c => `<div class="comment">
+                      <b>${escapeHtml(c.author)}</b>: ${escapeHtml(c.text)}
+                    </div>`
+            )
+            .join("");
 
-    // 좋아요 버튼 이벤트
-    document.getElementById("likeBtn").onclick = async ()=>{
+    // 좋아요 버튼 동작
+    document.getElementById("likeBtn").onclick = async () => {
+      const liked = JSON.parse(localStorage.getItem("likedPosts") || "[]");
+      const isLiked = liked.includes(id);
+
       const res2 = await fetch(`/api/posts/${id}/like`, { method: "POST" });
-      if(res2.ok){
+      if (res2.ok) {
         const data2 = await res2.json();
         document.getElementById("likeCount").textContent = data2.likes;
-      } else alert("좋아요 실패");
-    };
 
-  } catch(e){
+        // 상태 토글
+        if (isLiked) {
+          localStorage.setItem("likedPosts", JSON.stringify(liked.filter(x => x !== id)));
+          document.getElementById("likeBtn").textContent = "좋아요";
+          document.getElementById("likeBtn").style.background = "";
+        } else {
+          liked.push(id);
+          localStorage.setItem("likedPosts", JSON.stringify(liked));
+          document.getElementById("likeBtn").textContent = "좋아요 취소";
+          document.getElementById("likeBtn").style.background = "#ffcccc";
+        }
+      } else {
+        alert("좋아요 요청 실패");
+      }
+    };
+  } catch (e) {
     console.error("loadPost error:", e);
     alert("글 불러오기 실패");
   }
