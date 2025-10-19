@@ -7,54 +7,30 @@
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="header">💌 WhisperBox - 목록</div>
+  <div class="header">💌 WhisperBox - 고민함</div>
   <div class="container">
     <div class="card" id="topbar">
       <div class="row">
-        <div class="col"><input id="searchInput" type="text" placeholder="검색어"/></div>
-        <div style="width:160px"><div id="userArea"></div></div>
+        <div class="col">
+          <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)"/>
+        </div>
+        <div style="width:160px">
+          <div id="userArea"></div>
+        </div>
       </div>
-      <div class="actions">
+      <div style="margin-top:10px" class="actions">
         <button onclick="location.href='write.html'">✏️ 글쓰기</button>
-      </div><!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>WhisperBox - 목록</title>
-<link rel="stylesheet" href="style.css"/>
-</head>
-<body>
-<div class="header">💌 WhisperBox - 익명 고민함</div>
-<div class="container">
-  <div class="card" id="topbar">
-    <div class="row">
-      <div class="col">
-        <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)"/>
-      </div>
-      <div style="width:160px">
-        <div id="userArea"></div>
+        <button onclick="location.href='login.html'">로그인</button>
+        <button onclick="location.href='signup.html'">회원가입</button>
+        <button onclick="location.href='admin.html'">관리자</button>
       </div>
     </div>
-    <div style="margin-top:10px" class="actions">
-      <button onclick="location.href='write.html'">✏️ 글쓰기</button>
-      <button onclick="location.href='login.html'">로그인</button>
-      <button onclick="location.href='signup.html'">회원가입</button>
-      <button onclick="location.href='admin.html'">관리자</button>
-    </div>
-    <div class="sort-actions" style="margin-top:10px">
-      <button onclick="loadPosts('', 'latest')">최신순</button>
-      <button onclick="loadPosts('', 'random')">랜덤</button>
-      <button onclick="loadPosts('', 'popular')">댓글 많은 순</button>
-    </div>
+
+    <div id="postsList"></div>
   </div>
 
-  <div id="postsList"></div>
-  <div id="pagination" style="margin-top:12px;text-align:center"></div>
-</div>
-
-<script src="script.js"></script>
-<script>
+<script type="module" src="script.js"></script>
+<script type="module">
 (async function(){
   await showCurrentUser();
   await loadPosts();
@@ -62,20 +38,6 @@
   document.getElementById("searchInput").addEventListener("input", async (e)=>{
     await loadPosts(e.target.value.trim());
   });
-})();
-</script>
-</body>
-</html>
-
-    </div>
-    <div id="postsList"></div>
-  </div>
-<script src="script.js"></script>
-<script>
-(async()=>{
-  await showCurrentUser();
-  await loadPosts();
-  document.getElementById("searchInput").addEventListener("input", async e=>{ await loadPosts(e.target.value.trim()); });
 })();
 </script>
 </body>
