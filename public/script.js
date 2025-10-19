@@ -117,6 +117,53 @@ window.loadPosts = async function(search = "", sort = "latest") {
   }
 };
 
+// === 게시글 1개 보기 ===
+window.loadPost = async function(id){
+  try {
+    const res = await fetch(`/api/posts/${id}`);
+    if(!res.ok) throw new Error("글 불러오기 실패");
+    const data = await res.json();
+    const post = data.post;
+
+    const card = document.getElementById("postCard");
+    card.innerHTML = `
+      <h2>${escapeHtml(post.title)}</h2>
+      <p>${escapeHtml(post.content)}</p>
+      <div class="meta">
+        <span>👤 ${escapeHtml(post.author)}</span>
+        <span>❤️ <span id="likeCount">${post.likes}</span></span>
+      </div>
+      <div style="margin-top:8px">
+        <button id="likeBtn">좋아요</button>
+      </div>
+    `;
+
+    // 댓글 표시
+    const commentsArea = document.getElementById("commentsArea");
+    commentsArea.innerHTML =
+      post.comments.length === 0
+        ? `<p>댓글이 없습니다</p>`
+        : post.comments.map(
+            c => `<div class="comment">
+                    <b>${escapeHtml(c.author)}</b>: ${escapeHtml(c.text)}
+                  </div>`
+          ).join("");
+
+    // 좋아요 버튼 이벤트
+    document.getElementById("likeBtn").onclick = async ()=>{
+      const res2 = await fetch(`/api/posts/${id}/like`, { method: "POST" });
+      if(res2.ok){
+        const data2 = await res2.json();
+        document.getElementById("likeCount").textContent = data2.likes;
+      } else alert("좋아요 실패");
+    };
+
+  } catch(e){
+    console.error("loadPost error:", e);
+    alert("글 불러오기 실패");
+  }
+};
+
 // === 유틸 ===
 function escapeHtml(s) {
   if (!s) return "";
