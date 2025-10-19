@@ -1,123 +1,186 @@
-// 공통 유틸 스크립트
-window.__WB_CURRENT_USER = null;
+import express from "express";
+import session from "express-session";
+import bodyParser from "body-parser";
+import { Low } from "lowdb";
+import { JSONFile } from "lowdb/node";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// 현재 로그인 유저 정보 로드 (비동기)
-export async function fetchCurrentUser(){
-  try {
-    const res = await fetch("/api/me");
-    if(!res.ok) return null;
-    const data = await res.json();
-    return data.user || null;
-  } catch(e){
-    console.error("fetchCurrentUser error", e);
-    return null;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+// --- lowdb 설정
+const defaultData = { users: [], posts: [] };
+const adapter = new JSONFile(path.join(__dirname, "db.json"));
+const db = new Low(adapter, defaultData);
+await db.read();
+if(!db.data) db.data = defaultData;
+await db.write(); // 파일 없으면 생성
+
+// --- 미들웨어
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({
+  secret: process.env.SESSION_SECRET || "keyboard_cat_secret",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 1000*60*60*24 } // 1일
+}));
+app.use(express.static(path.join(__dirname, "public")));
+
+// --- 관리자 계정
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
+
+// --- 유틸
+const saveDB = async () => await db.write();
+const requireLogin = (req,res,next) => {
+  if(!req.session?.user) return res.status(401).json({error:"로그인 필요"});
+  next();
+};
+const requireAdmin = (req,res,next) => {
+  if(!req.session?.isAdmin) return res.status(403).json({error:"관리자 인증 필요"});
+  next();
+};
+
+// --- 세션 확인
+app.get("/api/me", (req,res)=>{
+  if(req.session?.user) return res.json({user:req.session.user});
+  return res.json({user:null});
+});
+
+// --- 회원가입
+app.post("/api/signup", async (req,res)=>{
+  const {username,password,nickname} = req.body;
+  if(!username || !password || !nickname) return res.status(400).json({error:"모든 항목 입력"});
+  const exists = db.data.users.find(u=>u.username===username);
+  if(exists) return res.status(400).json({error:"이미 존재하는 아이디"});
+  const user = {id:Date.now(), username, password, nickname};
+  db.data.users.push(user);
+  await saveDB();
+  res.json({success:true, message:"회원가입 완료"});
+});
+
+// --- 로그인
+app.post("/api/login", (req,res)=>{
+  const {username,password} = req.body;
+  if(!username || !password) return res.status(400).json({error:"아이디/비밀번호 입력"});
+  if(username===ADMIN_USERNAME && password===ADMIN_PASSWORD){
+    req.session.isAdmin=true;
+    req.session.user={id:0, username:ADMIN_USERNAME, nickname:"관리자"};
+    return res.json({success:true,isAdmin:true,nickname:"관리자"});
   }
-}
+  const user = db.data.users.find(u=>u.username===username && u.password===password);
+  if(!user) return res.status(401).json({error:"아이디 또는 비밀번호 틀림"});
+  req.session.user={id:user.id, username:user.username, nickname:user.nickname};
+  req.session.isAdmin=false;
+  res.json({success:true, nickname:user.nickname});
+});
 
-// 전역으로 사용 가능하게 함수 정의 (브라우저 전역)
-window.showCurrentUser = async function(requireLogin=false){
-  const res = await fetch("/api/me");
-  if(!res.ok) {
-    document.getElementById("userArea")?.innerText = "";
-    return null;
-  }
-  const data = await res.json();
-  const user = data.user || null;
-  window.__WB_CURRENT_USER = user;
-  const userArea = document.getElementById("userArea");
-  if(userArea){
-    if(user) {
-      userArea.innerHTML = `<div style="text-align:right"><small>안녕하세요, <strong>${escapeHtml(user.nickname)}</strong></small><div style="margin-top:6px"><button onclick="doLogout()">로그아웃</button></div></div>`;
-    } else {
-      userArea.innerHTML = `<div style="text-align:right"><small class="muted">비로그인</small></div>`;
-    }
-  }
-  if(requireLogin && !user){
-    alert("로그인이 필요합니다.");
-    location.href = "login.html";
-    return null;
-  }
-  return user;
-}
+// --- 로그아웃
+app.post("/api/logout",(req,res)=>{
+  req.session.destroy(err=>{
+    if(err) return res.status(500).json({error:"로그아웃 실패"});
+    res.json({success:true});
+  });
+});
 
-window.doLogout = async function(){
-  const res = await fetch("/api/logout", { method:"POST" });
-  if(res.ok) { window.__WB_CURRENT_USER = null; location.href="index.html"; }
-  else alert("로그아웃 실패");
-}
+// --- 게시글 목록 (랜덤)
+app.get("/api/posts", async (req,res)=>{
+  await db.read();
+  if(!db.data) db.data = { users: [], posts: [] };
+  const shuffled = db.data.posts.slice().sort(()=>Math.random()-0.5);
+  res.json({posts:shuffled});
+});
 
-// posts 로드 및 렌더 (검색어 optional)
-window.loadPosts = async function(query){
-  try {
-    const res = await fetch("/api/posts");
-    if(!res.ok) throw new Error("posts fetch fail");
-    const data = await res.json();
-    let posts = data.posts || [];
-    if(query){
-      const q = query.toLowerCase();
-      posts = posts.filter(p => (p.title||"").toLowerCase().includes(q) || (p.content||"").toLowerCase().includes(q) || (p.author||"").toLowerCase().includes(q));
-    }
-    const container = document.getElementById("postsList");
-    if(!container) return;
-    if(posts.length===0){ container.innerHTML = `<div class="card">게시글이 없습니다</div>`; return; }
+// --- 게시글 작성
+app.post("/api/posts", requireLogin, async (req,res)=>{
+  const {title, content} = req.body;
+  if(!title||!content) return res.status(400).json({error:"제목과 내용 입력"});
+  const user = req.session.user;
+  const newPost = {
+    id:Date.now(),
+    title,
+    content,
+    author:user.nickname,
+    authorUsername:user.username,
+    comments:[],
+    createdAt:new Date().toISOString()
+  };
+  db.data.posts.push(newPost);
+  await saveDB();
+  res.json({success:true, post:newPost});
+});
 
-    container.innerHTML = posts.map(p => `
-      <div class="card">
-        <div class="post-title"><a href="view.html?id=${p.id}">${escapeHtml(p.title)}</a></div>
-        <div class="post-meta post-meta">${escapeHtml(p.author)} · ${new Date(p.createdAt).toLocaleString()}</div>
-        <div style="margin-top:8px">${escapeHtml(truncate(p.content,200))}</div>
-        <div style="margin-top:10px" class="actions">
-          <button onclick="location.href='view.html?id=${p.id}'">열기</button>
-        </div>
-      </div>
-    `).join("");
-  } catch (e){
-    console.error(e);
-    document.getElementById("postsList").innerHTML = `<div class="card">게시글 불러오기 실패</div>`;
-  }
-}
+// --- 게시글 조회
+app.get("/api/posts/:id",(req,res)=>{
+  const post = db.data.posts.find(p=>p.id==req.params.id);
+  if(!post) return res.status(404).json({error:"게시글 없음"});
+  res.json({post});
+});
 
-// load single post
-window.loadPost = async function(id){
-  try {
-    const res = await fetch("/api/posts/" + id);
-    if(!res.ok) throw new Error("post fetch fail");
-    const data = await res.json();
-    const p = data.post;
-    if(!p) { document.getElementById("postCard").innerHTML = "<div>글 없음</div>"; return; }
-    document.getElementById("postCard").innerHTML = `<div class="post-title">${escapeHtml(p.title)}</div>
-      <div class="post-meta">${escapeHtml(p.author)} · ${new Date(p.createdAt).toLocaleString()}</div>
-      <div style="margin-top:10px">${escapeHtml(p.content)}</div>
-      <div style="margin-top:10px" class="actions">
-        ${ window.__WB_CURRENT_USER && window.__WB_CURRENT_USER.username === p.authorUsername ? `<button onclick="editPost(${p.id})">수정</button><button onclick="deletePost(${p.id})">삭제</button>` : "" }
-        <button onclick="location.href='index.html'">목록</button>
-      </div>
-    `;
+// --- 댓글 작성
+app.post("/api/posts/:id/comments", requireLogin, async (req,res)=>{
+  const {text} = req.body;
+  if(!text) return res.status(400).json({error:"댓글 입력"});
+  const post = db.data.posts.find(p=>p.id==req.params.id);
+  if(!post) return res.status(404).json({error:"게시글 없음"});
+  const user = req.session.user;
+  const comment = {id:Date.now(), text, author:user.nickname, authorUsername:user.username, createdAt:new Date().toISOString()};
+  post.comments.push(comment);
+  await saveDB();
+  res.json({success:true, post});
+});
 
-    // comments
-    const ca = document.getElementById("commentsArea");
-    ca.innerHTML = (p.comments && p.comments.length) ? p.comments.map(c=>`<div class="comment"><strong>${escapeHtml(c.author)}</strong> · ${new Date(c.createdAt).toLocaleString()}<div style="margin-top:6px">${escapeHtml(c.text)}</div></div>`).join("") : "<div class='muted'>댓글이 없습니다</div>";
-  } catch(e){
-    console.error(e);
-    document.getElementById("postCard").innerHTML = "<div>게시글 로드 실패</div>";
-  }
-}
+// --- 게시글 삭제
+app.delete("/api/posts/:id", requireLogin, async (req,res)=>{
+  const postId = Number(req.params.id);
+  const post = db.data.posts.find(p=>p.id===postId);
+  if(!post) return res.status(404).json({error:"게시글 없음"});
+  const isAuthor = req.session.user?.username===post.authorUsername;
+  if(!isAuthor && !req.session.isAdmin) return res.status(403).json({error:"삭제 권한 없음"});
+  db.data.posts = db.data.posts.filter(p=>p.id!==postId);
+  await saveDB();
+  res.json({success:true});
+});
 
-// delete post (author or admin)
-window.deletePost = async function(id){
-  if(!confirm("정말 삭제할까요?")) return;
-  const res = await fetch(`/api/posts/${id}`, { method:"DELETE" });
-  if(res.ok){ alert("삭제됨"); location.href="index.html"; }
-  else {
-    const j = await res.json().catch(()=>({}));
-    alert(j.error || "삭제 실패");
-  }
-}
+// --- 게시글 수정
+app.put("/api/posts/:id", requireLogin, async (req,res)=>{
+  const postId = Number(req.params.id);
+  const {title, content} = req.body;
+  const post = db.data.posts.find(p=>p.id===postId);
+  if(!post) return res.status(404).json({error:"게시글 없음"});
+  if(req.session.user.username!==post.authorUsername) return res.status(403).json({error:"수정 권한 없음"});
+  post.title = title ?? post.title;
+  post.content = content ?? post.content;
+  await saveDB();
+  res.json({success:true, post});
+});
 
-// helper: escape
-function escapeHtml(s){
-  if(!s) return "";
-  return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
-}
+// --- 관리자: 사용자 목록
+app.get("/api/admin/users", requireAdmin,(req,res)=>{
+  const users = (db.data.users||[]).map(u=>({id:u.id, username:u.username, nickname:u.nickname}));
+  res.json({users});
+});
 
-function truncate(s,n){ if(!s) return ""; return s.length>n ? s.slice(0,n)+"..." : s; }
+// --- 관리자: 게시글 삭제
+app.delete("/api/admin/posts/:id", requireAdmin, async (req,res)=>{
+  const postId = Number(req.params.id);
+  db.data.posts = db.data.posts.filter(p=>p.id!==postId);
+  await saveDB();
+  res.json({success:true});
+});
+
+// --- 관리자: DB 초기화
+app.post("/api/admin/reset", requireAdmin, async (req,res)=>{
+  db.data = {users:[], posts:[]};
+  await saveDB();
+  res.json({success:true});
+});
+
+// --- 기본 페이지
+app.get("/", (req,res)=> res.sendFile(path.join(__dirname,"public","index.html")));
+
+app.listen(PORT, ()=>console.log(`✅ 서버 실행 중: http://localhost:${PORT}`));
