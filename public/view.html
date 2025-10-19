@@ -28,7 +28,7 @@
   const id = params.get("id");
   if(!id){ alert("잘못된 접근"); location.href="index.html"; return; }
 
-  await showCurrentUser(); // 로그인 여부 확인
+  await showCurrentUser();
   await loadPost(id);
 
   document.getElementById("replyBtn").addEventListener("click", async ()=>{
@@ -41,11 +41,10 @@
       body: JSON.stringify({ text })
     });
     const data = await res.json();
-    if(data?.success){ 
+    if(data?.success){
       await loadPost(id);
       document.getElementById("replyText").value="";
-    } else if(data?.error) alert(data.error);
-    else alert("댓글 실패");
+    } else alert(data.error || "댓글 실패");
   });
 })();
 </script>
