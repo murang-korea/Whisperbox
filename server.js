@@ -157,6 +157,15 @@ app.put("/api/posts/:id", requireLogin, async (req,res)=>{
   res.json({success:true, post});
 });
 
+// 좋아요
+app.post("/api/posts/:id/like", async (req,res)=>{
+  const post = db.data.posts.find(p=>p.id==req.params.id);
+  if(!post) return res.json({error:"글이 없습니다"});
+  post.likes = (post.likes||0)+1;
+  await db.write();
+  res.json({success:true, likes:post.likes});
+});
+
 // --- 관리자: 사용자 목록
 app.get("/api/admin/users", requireAdmin,(req,res)=>{
   const users = (db.data.users||[]).map(u=>({id:u.id, username:u.username, nickname:u.nickname}));
