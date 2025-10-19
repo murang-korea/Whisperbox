@@ -1,5 +1,6 @@
 window.__WB_CURRENT_USER = null;
 
+// 로그인 유저 표시
 export async function showCurrentUser(requireLogin=false){
   try {
     const res = await fetch("/api/me");
@@ -19,16 +20,22 @@ export async function showCurrentUser(requireLogin=false){
       }
     }
 
-    if(requireLogin && !user){ alert("로그인이 필요합니다."); location.href="login.html"; return null; }
+    if(requireLogin && !user){
+      alert("로그인이 필요합니다.");
+      location.href="login.html";
+      return null;
+    }
     return user;
   } catch(e){ console.error(e); return null; }
 }
 
+// 로그아웃
 window.doLogout = async function(){
   const res = await fetch("/api/logout",{method:"POST"});
   if(res.ok){ window.__WB_CURRENT_USER=null; location.href="index.html"; }
 }
 
+// 게시글 불러오기 (검색/정렬)
 export async function loadPosts(query, sortType="random"){
   try {
     const res = await fetch("/api/posts");
@@ -77,6 +84,7 @@ export async function loadPosts(query, sortType="random"){
   }
 }
 
+// 단일 글 보기 + 댓글 + 좋아요
 export async function loadPost(id){
   try {
     const res = await fetch(`/api/posts/${id}`);
@@ -108,11 +116,13 @@ export async function loadPost(id){
   }
 }
 
+// 좋아요
 window.likePost = async function(id){
   const res = await fetch(`/api/posts/${id}/like`,{method:"POST"});
   const data = await res.json();
   if(data?.success) loadPost(id);
 }
 
+// 유틸
 function escapeHtml(s){ if(!s) return ""; return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
 function truncate(s,n){ if(!s) return ""; return s.length>n ? s.slice(0,n)+"..." : s; }
