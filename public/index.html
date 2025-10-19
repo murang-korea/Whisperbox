@@ -1,88 +1,42 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WhisperBox - 목록</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>WhisperBox - 목록</title>
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="header">💌 WhisperBox - 익명 고민함</div>
-  <div class="container">
-    <div class="card" id="topbar">
-      <div class="row">
-        <div class="col">
-          <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)"/>
-        </div>
-        <div style="width:160px">
-          <div id="userArea"></div>
-        </div>
+<div class="header">💌 WhisperBox - 고민함</div>
+<div class="container">
+  <div class="card" id="topbar">
+    <div class="row">
+      <div class="col">
+        <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)" />
       </div>
-      <div style="margin-top:10px" class="actions">
-        <button onclick="location.href='write.html'">✏️ 글쓰기</button>
-        <button onclick="location.href='login.html'">로그인</button>
-        <button onclick="location.href='signup.html'">회원가입</button>
-        <button onclick="location.href='admin.html'">관리자</button>
+      <div style="width:160px">
+        <div id="userArea"></div>
       </div>
     </div>
-
-    <div id="postsList"></div>
+    <div style="margin-top:10px" class="actions">
+      <button onclick="location.href='write.html'">✏️ 글쓰기</button>
+      <button onclick="location.href='login.html'">로그인</button>
+      <button onclick="location.href='signup.html'">회원가입</button>
+      <button onclick="location.href='admin.html'">관리자</button>
+    </div>
   </div>
+  <div id="postsList"></div>
+</div>
 
-<script src="script.js"></script>
+<script type="module" src="script.js"></script>
 <script>
 (async function(){
-  // 현재 로그인 유저 표시
   await showCurrentUser();
-
-  // 게시글 로드
   await loadPosts();
 
-  // 검색 기능
-  document.getElementById("searchInput").addEventListener("input", async (e) => {
+  document.getElementById("searchInput").addEventListener("input", async (e)=>{
     await loadPosts(e.target.value.trim());
   });
-
-  // 게시글 로드 함수 (랜덤 순서)
-  async function loadPosts(search=""){
-    const res = await fetch("/api/posts");
-    const data = await res.json();
-    let posts = data.posts || [];
-
-    // 검색 필터
-    if(search){
-      const keyword = search.toLowerCase();
-      posts = posts.filter(p =>
-        p.title.toLowerCase().includes(keyword) ||
-        p.content.toLowerCase().includes(keyword) ||
-        p.author.toLowerCase().includes(keyword)
-      );
-    }
-
-    // 랜덤 섞기
-    posts = posts.sort(() => Math.random() - 0.5);
-
-    const container = document.getElementById("postsList");
-    container.innerHTML = "";
-
-    if(posts.length === 0){
-      container.innerHTML = "<div class='card muted'>게시글이 없습니다.</div>";
-      return;
-    }
-
-    posts.forEach(post => {
-      const div = document.createElement("div");
-      div.className = "card";
-      div.innerHTML = `
-        <div class="post-meta small muted">
-          작성자: ${post.author} | 작성일: ${new Date(post.createdAt).toLocaleString()}
-        </div>
-        <div class="post-title">${post.title}</div>
-        <div class="post-content">${post.content}</div>
-      `;
-      container.appendChild(div);
-    });
-  }
 })();
 </script>
 </body>
