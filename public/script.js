@@ -153,34 +153,23 @@ window.loadPost = async function(id) {
             )
             .join("");
 
-    // 좋아요 버튼 동작
-    document.getElementById("likeBtn").onclick = async () => {
-      const liked = JSON.parse(localStorage.getItem("likedPosts") || "[]");
-      const isLiked = liked.includes(id);
+    // 좋아요 버튼 이벤트
+document.getElementById("likeBtn").onclick = async () => {
+  const res2 = await fetch(`/api/posts/${id}/like`, { method: "POST" });
+  if (res2.ok) {
+    const data2 = await res2.json();
+    document.getElementById("likeCount").textContent = data2.likes;
 
-      const res2 = await fetch(`/api/posts/${id}/like`, { method: "POST" });
-      if (res2.ok) {
-        const data2 = await res2.json();
-        document.getElementById("likeCount").textContent = data2.likes;
-
-        // 상태 토글
-        if (isLiked) {
-          localStorage.setItem("likedPosts", JSON.stringify(liked.filter(x => x !== id)));
-          document.getElementById("likeBtn").textContent = "좋아요";
-          document.getElementById("likeBtn").style.background = "";
-        } else {
-          liked.push(id);
-          localStorage.setItem("likedPosts", JSON.stringify(liked));
-          document.getElementById("likeBtn").textContent = "좋아요 취소";
-          document.getElementById("likeBtn").style.background = "#ffcccc";
-        }
-      } else {
-        alert("좋아요 요청 실패");
-      }
-    };
-  } catch (e) {
-    console.error("loadPost error:", e);
-    alert("글 불러오기 실패");
+    const likeBtn = document.getElementById("likeBtn");
+    if (data2.liked) {
+      likeBtn.textContent = "좋아요 취소";
+      likeBtn.style.background = "#ffcccc";
+    } else {
+      likeBtn.textContent = "좋아요";
+      likeBtn.style.background = "";
+    }
+  } else {
+    alert("좋아요 실패");
   }
 };
 
