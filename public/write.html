@@ -27,7 +27,11 @@
   (async function(){
     // 로그인 확인
     const user = await showCurrentUser(true);
-    if(!user) return;
+    if(!user){
+        // 로그인 안 되어 있으면 로그인 페이지로 이동
+        window.location.href = "login.html";
+        return;
+    }
 
     // 작성 버튼 이벤트
     document.getElementById("submitBtn").addEventListener("click", async ()=>{
