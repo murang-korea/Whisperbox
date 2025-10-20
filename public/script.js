@@ -197,4 +197,4 @@ function escapeHtml(s) {
 function truncate(s, n) {
   if (!s) return "";
   return s.length > n ? s.slice(0, n) + "..." : s;
-}
+      }
