@@ -162,13 +162,28 @@ app.put("/api/posts/:id", requireLogin, async (req,res)=>{
   res.json({success:true, post});
 });
 
-// 좋아요
-app.post("/api/posts/:id/like", async (req,res)=>{
-  const post = db.data.posts.find(p=>p.id==req.params.id);
-  if(!post) return res.json({error:"글이 없습니다"});
-  post.likes = (post.likes||0)+1;
-  await db.write();
-  res.json({success:true, likes:post.likes});
+// --- 좋아요 토글 ---
+app.post("/api/posts/:id/like", requireLogin, async (req, res) => {
+  const post = db.data.posts.find(p => p.id == req.params.id);
+  if (!post) return res.status(404).json({ error: "글이 없습니다" });
+
+  const user = req.session.user;
+  if (!post.likedUsers) post.likedUsers = [];
+
+  const alreadyLiked = post.likedUsers.includes(user.username);
+
+  if (alreadyLiked) {
+    // 좋아요 취소
+    post.likes = Math.max((post.likes || 0) - 1, 0);
+    post.likedUsers = post.likedUsers.filter(u => u !== user.username);
+  } else {
+    // 좋아요 추가
+    post.likes = (post.likes || 0) + 1;
+    post.likedUsers.push(user.username);
+  }
+
+  await saveDB();
+  res.json({ success: true, likes: post.likes, liked: !alreadyLiked });
 });
 
 // --- 관리자: 사용자 목록
