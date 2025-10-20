@@ -1,56 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>글쓰기</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="script.js" defer></script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>✏️ 글쓰기 - WhisperBox</title>
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1><a href="index.html">게시판</a></h1>
-    <div id="userArea"></div>
-  </header>
+  <div class="header">✏️ WhisperBox - 글쓰기</div>
 
-  <main class="container">
-    <h2>새 글 작성</h2>
-
+  <div class="container">
     <div class="card">
-      <label>제목</label>
-      <input id="title" type="text" placeholder="제목을 입력하세요" />
+      <h2>새 글 작성</h2>
+      <input id="titleInput" type="text" placeholder="제목을 입력하세요" style="width:100%;padding:8px;margin-top:8px"/>
+      <textarea id="contentInput" rows="8" placeholder="내용을 입력하세요" style="width:100%;margin-top:8px;padding:8px"></textarea>
 
-      <label>내용</label>
-      <textarea id="content" rows="10" placeholder="내용을 입력하세요"></textarea>
-
-      <button id="writeBtn" style="margin-top:10px;">작성</button>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <button id="submitBtn" style="background-color:#ffb366;">📨 작성하기</button>
+        <button onclick="location.href='index.html'">취소</button>
+      </div>
     </div>
-  </main>
+  </div>
 
+  <script src="script.js"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", async () => {
-      // ✅ 로그인 확인 (없으면 자동 리다이렉트)
-      const user = await showCurrentUser(true);
-      if (!user) return;
+  (async function(){
+    // 로그인 확인
+    const user = await showCurrentUser(true);
+    if(!user) return;
 
-      // ✅ 작성 버튼 클릭 이벤트
-      document.getElementById("writeBtn").onclick = async () => {
-        const title = document.getElementById("title").value.trim();
-        const content = document.getElementById("content").value.trim();
+    // 작성 버튼 이벤트
+    document.getElementById("submitBtn").addEventListener("click", async ()=>{
+      const title = document.getElementById("titleInput").value.trim();
+      const content = document.getElementById("contentInput").value.trim();
 
-        if (!title || !content) {
-          alert("제목과 내용을 모두 입력하세요!");
-          return;
-        }
+      if(!title || !content){
+        alert("제목과 내용을 모두 입력해주세요.");
+        return;
+      }
 
-        const res = await postNew(title, content);
-        if (!res.ok || res.data.error) {
-          alert(res.data?.error || "작성 실패");
-        } else {
-          alert("작성 완료!");
-          location.href = "index.html";
-        }
-      };
+      const res = await postNew(title, content);
+      if(res.ok){
+        alert("글이 작성되었습니다!");
+        location.href = "index.html";
+      }else{
+        alert(res.data?.error || "작성 실패");
+      }
     });
+  })();
   </script>
 </body>
 </html>
