@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WhisperBox - 회원가입</title>
+<link rel="stylesheet" href="styles.css"></head>
+<body>
+  <header class="header"><div class="brand"><h1>WhisperBox</h1></div><div id="authArea" class="actions"></div></header>
+  <main class="container">
+    <div class="card form" style="max-width:560px;margin:20px auto">
+      <h2>회원가입</h2>
+      <input id="r_username" class="input" placeholder="아이디"><br><br>
+      <input id="r_password" class="input" type="password" placeholder="비밀번호"><br><br>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="regBtn">가입하기</button>
+        <button class="btn ghost" onclick="location.href='login.html'">취소</button>
+      </div>
+    </div>
+  </main>
+
+<script src="script.js"></script>
+<script>
+(async ()=>{
+  await renderHeaderAuth('#authArea');
+  document.getElementById('regBtn').addEventListener('click', async ()=>{
+    const username = document.getElementById('r_username').value.trim();
+    const password = document.getElementById('r_password').value.trim();
+    if(!username || !password) return showMsg('아이디와 비밀번호를 입력하세요.');
+    try{
+      const res = await api('/api/register', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username, password })
+      });
+      if(res.ok){ showMsg('회원가입 완료. 로그인 해주세요.'); location.href = '/login.html'; }
+      else showMsg(res.error || '회원가입 실패');
+    }catch(e){ showMsg(e.message || '오류'); }
+  });
+})();
+</script>
+</body>
+</html>
