@@ -23,6 +23,21 @@ async function getCurrentUser() {
 function el(sel){ return document.querySelector(sel); }
 function elAll(sel){ return document.querySelectorAll(sel); }
 
+async function showCurrentUser(requireLogin=false){
+  const res = await fetch("/api/current-user");
+  const user = await res.json();
+  if(requireLogin && !user){
+    location.href = "login.html";
+    return null;
+  }
+  return user;
+}
+
+async function logout(){
+  await fetch("/api/logout", {method:"POST"});
+  location.href = "index.html";
+}
+
 /* 로그인 상태 표시용(헤더에 넣을 수 있도록) */
 async function renderHeaderAuth(containerSelector) {
   const cont = document.querySelector(containerSelector);
