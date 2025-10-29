@@ -1,94 +1,84 @@
 <!doctype html>
 <html lang="ko">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WhisperBox - 글 보기</title>
-<link rel="stylesheet" href="styles.css"></head>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>📖 WhisperBox 글보기</title>
+<link rel="stylesheet" href="style.css" />
+</head>
 <body>
-  <header class="header"><div class="brand"><h1>WhisperBox</h1></div><div id="authArea" class="actions"></div></header>
+  <div class="header">
+    📖 WhisperBox
+    <div id="userArea" style="float:right"></div>
+  </div>
 
-  <main class="container">
+  <div class="container">
     <div id="postArea" class="card"></div>
 
-    <div class="card" style="max-width:900px;margin-top:12px">
-      <h3>댓글</h3>
-      <!-- 원글 요약을 댓글폼 위에 항상 표시 -->
-      <div id="postSummary" class="card small" style="margin-bottom:12px"></div>
+    <h3>💬 댓글</h3>
+    <div id="commentList"></div>
 
-      <div id="commentForm" style="margin-bottom:12px">
-        <textarea id="commentInput" class="input" placeholder="댓글을 작성하세요. (로그인 필요)"></textarea>
-        <div style="margin-top:8px;display:flex;gap:8px">
-          <button class="btn" id="commentBtn">댓글 등록</button>
-          <button class="btn ghost" id="backBtn">목록으로</button>
+    <textarea id="commentInput" rows="3" placeholder="댓글을 입력하세요" style="width:100%;margin-top:10px;"></textarea>
+    <button id="commentBtn" style="margin-top:5px;background-color:#ffb366;">댓글 작성</button>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+  (async function(){
+    const params = new URLSearchParams(location.search);
+    const id = params.get("id");
+    const user = await showCurrentUser();
+    if(user){
+      userArea.innerHTML = `${user.username}님 | <a href="#" id="logoutBtn">로그아웃</a>`;
+      document.getElementById("logoutBtn").onclick = logout;
+    } else {
+      userArea.innerHTML = `<a href="login.html">로그인</a>`;
+    }
+
+    const res = await fetch(`/api/posts/${id}`);
+    const post = await res.json();
+    if(!res.ok) return alert("게시글을 불러오지 못했습니다.");
+
+    document.getElementById("postArea").innerHTML = `
+      <h2>${post.title}</h2>
+      <p>${post.content}</p>
+      <small>✏️ ${post.author} | ${new Date(post.date).toLocaleString()}</small>
+    `;
+
+    const list = document.getElementById("commentList");
+    if(post.comments.length === 0){
+      list.innerHTML = "<p>아직 댓글이 없습니다.</p>";
+    }else{
+      list.innerHTML = post.comments.map(c=>`
+        <div class="card" style="margin-top:5px;">
+          <p>${c.content}</p>
+          <small>💬 ${c.author} | ${new Date(c.date).toLocaleString()}</small>
         </div>
-      </div>
+      `).join("");
+    }
 
-      <div id="commentsList"></div>
-    </div>
-  </main>
+    document.getElementById("commentBtn").addEventListener("click", async ()=>{
+      if(!user){
+        alert("로그인이 필요합니다!");
+        location.href = "login.html";
+        return;
+      }
 
-<script src="script.js"></script>
-<script>
-(async ()=>{
-  await renderHeaderAuth('#authArea');
-  const params = new URLSearchParams(location.search);
-  const id = params.get('id');
-  if(!id) { location.href = '/'; return; }
+      const content = commentInput.value.trim();
+      if(!content) return alert("댓글 내용을 입력하세요.");
 
-  // 로드 게시글
-  let post;
-  try{
-    post = await api('/api/posts/' + id);
-    if(post.error) throw new Error(post.error);
-  }catch(e){ showMsg(e.message || '게시글 불러오기 실패'); location.href='/'; return; }
-
-  // 서버가 게시글 오브젝트 직접 반환 (server.js: res.json(post))
-  // render post header
-  const p = post;
-  const postArea = document.getElementById('postArea');
-  postArea.innerHTML = `
-    <h2 style="margin:0">${escapeHtml(p.title)}</h2>
-    <div class="small">by ${escapeHtml(p.author)} · ${new Date(p.date).toLocaleString()}</div>
-    <div class="post-content">${escapeHtml(p.content)}</div>
-  `;
-
-  // post summary above comment form
-  const postSummary = document.getElementById('postSummary');
-  postSummary.innerHTML = `<strong>${escapeHtml(p.title)}</strong><div class="small">by ${escapeHtml(p.author)}</div><div style="margin-top:8px">${escapeHtml(p.content).slice(0, 500)}${p.content.length>500?'…':''}</div>`;
-
-  // comments list
-  const commentsList = document.getElementById('commentsList');
-  function renderComments(){
-    if(!p.comments || p.comments.length===0) commentsList.innerHTML = '<div class="small">등록된 댓글이 없습니다.</div>';
-    else commentsList.innerHTML = p.comments.map(c=>`
-      <div class="comment">
-        <div class="meta"><strong>${escapeHtml(c.author)}</strong> · ${new Date(c.date).toLocaleString()}</div>
-        <div style="margin-top:6px">${escapeHtml(c.content)}</div>
-      </div>
-    `).join('');
-  }
-  renderComments();
-
-  document.getElementById('backBtn').addEventListener('click', ()=> location.href = '/');
-
-  // 댓글 등록
-  document.getElementById('commentBtn').addEventListener('click', async ()=>{
-    const text = document.getElementById('commentInput').value.trim();
-    if(!text) return showMsg('댓글 내용을 입력하세요.');
-    try{
-      const res = await api('/api/posts/' + id + '/comments', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ content: text })
+      const res2 = await fetch(`/api/posts/${id}/comments`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({content})
       });
-      if(res.ok){ 
-        // 서버가 ok:true 반환하면 새 댓글을 로드 (간단히 pop into p)
-        p.comments.push({ author: (await getCurrentUser())?.username || '익명', content: text, date: new Date().toISOString() });
-        document.getElementById('commentInput').value = '';
-        renderComments();
-      } else showMsg(res.error || '댓글 등록 실패');
-    }catch(e){ showMsg(e.message || '오류'); }
-  });
-})();
-</script>
+      const data = await res2.json();
+      if(res2.ok){
+        alert("댓글이 작성되었습니다!");
+        location.reload();
+      } else alert(data.error || "댓글 작성 실패");
+    });
+  })();
+  </script>
 </body>
 </html>
