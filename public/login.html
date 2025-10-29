@@ -1,52 +1,60 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WhisperBox - 로그인</title>
-<link rel="stylesheet" href="styles.css">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>🔐 로그인 - WhisperBox</title>
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="header">
-    <div class="brand"><h1>WhisperBox</h1></div>
-    <div id="authArea" class="actions"></div>
-  </header>
+  <div class="container">
+    <div class="card">
+      <h2>🔐 WhisperBox 로그인</h2>
 
-  <main class="container">
-    <div class="card form" style="max-width:560px;margin:20px auto">
-      <h2>로그인</h2>
-      <div style="margin-top:12px">
-        <input id="username" class="input" placeholder="아이디">
-      </div>
-      <div style="margin-top:8px">
-        <input id="password" class="input" type="password" placeholder="비밀번호">
-      </div>
-      <div style="margin-top:12px;display:flex;gap:8px">
-        <button class="btn" id="loginBtn">로그인</button>
-        <button class="btn ghost" onclick="location.href='register.html'">회원가입</button>
+      <input id="username" type="text" placeholder="아이디" style="width:100%;padding:8px;margin-top:8px"/>
+      <input id="password" type="password" placeholder="비밀번호" style="width:100%;padding:8px;margin-top:8px"/>
+
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <button id="loginBtn" style="background-color:#ffb366;">로그인</button>
+        <button id="registerBtn">회원가입</button>
       </div>
     </div>
-  </main>
+  </div>
 
-<script src="script.js"></script>
-<script>
-(async ()=>{
-  await renderHeaderAuth('#authArea');
-  document.getElementById('loginBtn').addEventListener('click', async ()=>{
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
-    if(!username || !password) return showMsg('아이디와 비밀번호를 입력하세요.');
-    try {
-      const res = await api('/api/login', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ username, password })
-      });
-      if(res.ok === false) { showMsg(res.error || '로그인 실패'); return; }
-      // success
-      location.href = '/';
-    } catch(e) { showMsg(e.message || '로그인 오류'); }
+  <script src="script.js"></script>
+  <script>
+  document.getElementById("loginBtn").addEventListener("click", async ()=>{
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+    if(!username || !password) return alert("아이디와 비밀번호를 입력해주세요.");
+
+    const res = await fetch("/api/login", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if(res.ok){
+      alert("로그인 성공!");
+      location.href = "index.html";
+    }else alert(data.error || "로그인 실패");
   });
-})();
-</script>
+
+  document.getElementById("registerBtn").addEventListener("click", async ()=>{
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+    if(!username || !password) return alert("아이디와 비밀번호를 입력해주세요.");
+
+    const res = await fetch("/api/register", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if(res.ok){
+      alert("회원가입 성공! 로그인해주세요.");
+    }else alert(data.error || "회원가입 실패");
+  });
+  </script>
 </body>
 </html>
