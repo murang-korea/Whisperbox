@@ -1,48 +1,54 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WhisperBox - 목록</title>
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="header">💌 WhisperBox - 고민함</div>
-  <div class="container">
-    <div class="card" id="topbar">
-      <div class="row">
-        <div class="col">
-          <input id="searchInput" type="text" placeholder="검색어(제목/내용/작성자)"/>
-        </div>
-        <div style="width:160px" id="userArea"></div>
-      </div>
+  <header class="header">
+    <div class="brand"><h1>WhisperBox</h1><div class="small">작고 조용한 글방</div></div>
+    <div id="authArea" class="actions"></div>
+  </header>
 
-      <div style="margin-top:8px">
-        <select id="sortSelect">
-          <option value="random">랜덤</option>
-          <option value="latest">최신순</option>
-          <option value="likes">좋아요 많은 순</option>
-          <option value="comments">댓글 많은 순</option>
-        </select>
-      </div>
-
-      <div style="margin-top:10px" class="actions">
-        <button onclick="location.href='write.html'">✏️ 글쓰기</button>
+  <main class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2>최근 글</h2>
+      <div>
+        <button class="btn" onclick="location.href='write.html'">새 글 작성</button>
       </div>
     </div>
 
-    <div id="postsList"></div>
-  </div>
+    <div id="list" class="list"></div>
+    <div class="footer">© WhisperBox</div>
+  </main>
 
-<script type="module" src="script.js"></script>
-<script type="module">
-(async function(){
-  await showCurrentUser();
-  await loadPosts();
+  <script src="script.js"></script>
+  <script>
+  (async function(){
+    await renderHeaderAuth('#authArea');
 
-  document.getElementById("searchInput").addEventListener("input", e => loadPosts(e.target.value.trim()));
-  document.getElementById("sortSelect").addEventListener("change", e => loadPosts(undefined, e.target.value));
-})();
-</script>
+    try {
+      const data = await api('/api/posts');
+      const listEl = document.getElementById('list');
+      if(!data || data.length === 0) {
+        listEl.innerHTML = '<div class="card small">게시글이 없습니다.</div>';
+        return;
+      }
+      listEl.innerHTML = data.map(p => `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div class="post-title"><a href="view.html?id=${p.id}">${escapeHtml(p.title)}</a></div>
+              <div class="small">by ${escapeHtml(p.author)} · ${new Date(p.date).toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="post-content">${escapeHtml(p.content).slice(0, 300)}${p.content.length > 300 ? '…' : ''}</div>
+        </div>
+      `).join('');
+    } catch(e) { console.error(e); showMsg(e.message || '불러오기 실패'); }
+  })();
+  </script>
 </body>
 </html>
