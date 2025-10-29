@@ -24,7 +24,7 @@ fs.ensureFileSync(POSTS_FILE);
 if (!fs.readJsonSync(USERS_FILE, { throws: false })) fs.writeJsonSync(USERS_FILE, []);
 if (!fs.readJsonSync(POSTS_FILE, { throws: false })) fs.writeJsonSync(POSTS_FILE, []);
 
-// 로그인
+// --- 인증 관련 ---
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   const users = await fs.readJson(USERS_FILE);
@@ -37,7 +37,6 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// 회원가입
 app.post("/api/register", async (req, res) => {
   const { username, password } = req.body;
   const users = await fs.readJson(USERS_FILE);
@@ -49,12 +48,10 @@ app.post("/api/register", async (req, res) => {
   res.json({ ok: true });
 });
 
-// 현재 로그인 유저
 app.get("/api/current-user", (req, res) => {
   res.json(req.session.user || null);
 });
 
-// 로그아웃
 app.post("/api/logout", (req, res) => {
   req.session.destroy(err => {
     if (err) return res.status(500).json({ error: "로그아웃 실패" });
@@ -62,13 +59,12 @@ app.post("/api/logout", (req, res) => {
   });
 });
 
-// 게시글 목록
+// --- 게시글/댓글 ---
 app.get("/api/posts", async (req, res) => {
   const posts = await fs.readJson(POSTS_FILE);
   res.json(posts);
 });
 
-// 새 게시글 작성
 app.post("/api/posts", async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: "로그인 필요" });
   const { title, content } = req.body;
@@ -86,7 +82,6 @@ app.post("/api/posts", async (req, res) => {
   res.json({ ok: true });
 });
 
-// 게시글 상세 + 댓글
 app.get("/api/posts/:id", async (req, res) => {
   const posts = await fs.readJson(POSTS_FILE);
   const post = posts.find(p => p.id == req.params.id);
@@ -94,7 +89,6 @@ app.get("/api/posts/:id", async (req, res) => {
   res.json(post);
 });
 
-// 댓글 작성
 app.post("/api/posts/:id/comments", async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: "로그인 필요" });
   const { content } = req.body;
