@@ -11,8 +11,8 @@
     <div class="card">
       <h2>🔐 WhisperBox 로그인</h2>
 
-      <input id="username" type="text" placeholder="아이디" style="width:100%;padding:8px;margin-top:8px"/>
-      <input id="password" type="password" placeholder="비밀번호" style="width:100%;padding:8px;margin-top:8px"/>
+      <input id="usernameInput" type="text" placeholder="아이디" style="width:100%;padding:8px;margin-top:8px"/>
+      <input id="passwordInput" type="password" placeholder="비밀번호" style="width:100%;padding:8px;margin-top:8px"/>
 
       <div class="row" style="margin-top:10px;justify-content:space-between">
         <button id="loginBtn" style="background-color:#ffb366;">로그인</button>
@@ -24,36 +24,37 @@
   <script src="script.js"></script>
   <script>
   document.getElementById("loginBtn").addEventListener("click", async ()=>{
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-    if(!username || !password) return alert("아이디와 비밀번호를 입력해주세요.");
+    const username = document.getElementById("usernameInput").value.trim();
+    const password = document.getElementById("passwordInput").value.trim();
 
-    const res = await fetch("/api/login", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({username, password})
-    });
-    const data = await res.json();
-    if(res.ok){
-      alert("로그인 성공!");
-      location.href = "index.html";
-    }else alert(data.error || "로그인 실패");
+    if(!username || !password) {
+      alert("아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        credentials: "include", // ✅ 세션 쿠키 유지
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username, password})
+      });
+      const data = await res.json();
+
+      if(res.ok && data.ok){
+        alert("로그인 성공!");
+        location.href = "index.html";
+      } else {
+        alert(data.error || "로그인 실패");
+      }
+    } catch(e){
+      console.error(e);
+      alert("로그인 중 오류 발생");
+    }
   });
 
-  document.getElementById("registerBtn").addEventListener("click", async ()=>{
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-    if(!username || !password) return alert("아이디와 비밀번호를 입력해주세요.");
-
-    const res = await fetch("/api/register", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({username, password})
-    });
-    const data = await res.json();
-    if(res.ok){
-      alert("회원가입 성공! 로그인해주세요.");
-    }else alert(data.error || "회원가입 실패");
+  document.getElementById("registerBtn").addEventListener("click", ()=>{
+    location.href = "register.html";
   });
   </script>
 </body>
