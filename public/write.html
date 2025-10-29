@@ -1,45 +1,55 @@
 <!doctype html>
 <html lang="ko">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WhisperBox - 새 글</title>
-<link rel="stylesheet" href="styles.css"></head>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>✏️ 글쓰기 - WhisperBox</title>
+<link rel="stylesheet" href="style.css" />
+</head>
 <body>
-  <header class="header"><div class="brand"><h1>WhisperBox</h1></div><div id="authArea" class="actions"></div></header>
+  <div class="header">✏️ WhisperBox - 글쓰기</div>
 
-  <main class="container">
-    <div class="card form" style="max-width:900px;margin:18px auto">
+  <div class="container">
+    <div class="card">
       <h2>새 글 작성</h2>
-      <div style="margin-top:12px"><input id="title" class="input" placeholder="제목"></div>
-      <div style="margin-top:10px"><textarea id="content" placeholder="내용을 입력하세요." class="input"></textarea></div>
-      <div style="margin-top:12px;display:flex;gap:8px">
-        <button class="btn" id="submitBtn">작성</button>
-        <button class="btn ghost" onclick="location.href='index.html'">취소</button>
+      <input id="titleInput" type="text" placeholder="제목을 입력하세요" style="width:100%;padding:8px;margin-top:8px"/>
+      <textarea id="contentInput" rows="8" placeholder="내용을 입력하세요" style="width:100%;margin-top:8px;padding:8px"></textarea>
+
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <button id="submitBtn" style="background-color:#ffb366;">📨 작성하기</button>
+        <button onclick="location.href='index.html'">취소</button>
       </div>
     </div>
-  </main>
+  </div>
 
-<script src="script.js"></script>
-<script>
-(async ()=>{
-  await renderHeaderAuth('#authArea');
-  const user = await getCurrentUser();
-  if(!user){ showMsg('로그인 후 작성 가능합니다.'); location.href = '/login.html'; return; }
+  <script src="script.js"></script>
+  <script>
+  (async function(){
+    const user = await showCurrentUser(true);
+    if(!user){
+      alert("로그인이 필요합니다!");
+      location.href = "login.html";
+      return;
+    }
 
-  document.getElementById('submitBtn').addEventListener('click', async ()=>{
-    const title = document.getElementById('title').value.trim();
-    const content = document.getElementById('content').value.trim();
-    if(!title || !content) return showMsg('제목과 내용을 입력하세요.');
-    try{
-      const res = await api('/api/posts', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ title, content })
+    document.getElementById("submitBtn").addEventListener("click", async ()=>{
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+
+      if(!title || !content) return alert("제목과 내용을 모두 입력해주세요.");
+
+      const res = await fetch("/api/posts", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({title, content})
       });
-      if(res.ok) { showMsg('작성 완료'); location.href = '/'; }
-      else showMsg(res.error || '작성 실패');
-    }catch(e){ showMsg(e.message || '오류'); }
-  });
-})();
-</script>
+      const data = await res.json();
+      if(res.ok){
+        alert("글이 작성되었습니다!");
+        location.href = "index.html";
+      }else alert(data.error || "작성 실패");
+    });
+  })();
+  </script>
 </body>
 </html>
