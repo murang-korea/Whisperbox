@@ -19,44 +19,54 @@
 
   <script src="script.js"></script>
   <script>
-  (async function(){
+  document.addEventListener("DOMContentLoaded", async () => {
+    // 로그인 상태 확인
     const user = await showCurrentUser();
 
-    // 로그인 상태에 따라 버튼 표시
     const userArea = document.getElementById("userArea");
-    if(user){
+    const writeBtn = document.getElementById("writeBtn");
+
+    // 로그인 상태 표시
+    if (user) {
       userArea.innerHTML = `${user.username}님 | <a href="#" id="logoutBtn">로그아웃</a>`;
       document.getElementById("logoutBtn").onclick = logout;
     } else {
-      userArea.innerHTML = `<a href="login.html">로그인</a>`;
+      userArea.innerHTML = `<a href="login.html" style="color:white;">로그인</a>`;
     }
 
-    document.getElementById("writeBtn").addEventListener("click", ()=>{
-      if(!user) {
+    // 글쓰기 버튼 동작
+    writeBtn.addEventListener("click", () => {
+      if (!user) {
         alert("로그인 후 작성할 수 있습니다!");
         location.href = "login.html";
-        return;
+      } else {
+        location.href = "write.html";
       }
-      location.href = "write.html";
     });
 
     // 게시글 목록 불러오기
-    const res = await fetch("/api/posts");
-    const posts = await res.json();
-    const postList = document.getElementById("postList");
+    try {
+      const res = await fetch("/api/posts");
+      const posts = await res.json();
+      const postList = document.getElementById("postList");
 
-    if(posts.length === 0){
-      postList.innerHTML = "<p>아직 게시글이 없습니다.</p>";
-    } else {
-      postList.innerHTML = posts.map(p=>`
+      if (!Array.isArray(posts) || posts.length === 0) {
+        postList.innerHTML = "<p>아직 게시글이 없습니다.</p>";
+        return;
+      }
+
+      postList.innerHTML = posts.map(p => `
         <div class="card" style="margin-top:10px;cursor:pointer" onclick="location.href='view.html?id=${p.id}'">
           <h3>${p.title}</h3>
-          <p>${p.content.slice(0,80)}...</p>
+          <p>${p.content.slice(0, 80)}...</p>
           <small>✏️ ${p.author} | 🕒 ${new Date(p.date).toLocaleString()}</small>
         </div>
       `).join("");
+    } catch (err) {
+      console.error(err);
+      alert("게시글을 불러오는 중 오류가 발생했습니다.");
     }
-  })();
+  });
   </script>
 </body>
 </html>
