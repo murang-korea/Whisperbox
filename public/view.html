@@ -1,56 +1,94 @@
 <!doctype html>
 <html lang="ko">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>글 보기 - WhisperBox</title>
-<link rel="stylesheet" href="style.css" />
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WhisperBox - 글 보기</title>
+<link rel="stylesheet" href="styles.css"></head>
 <body>
-  <div class="header">💬 WhisperBox - 글 보기</div>
-  <div class="container">
-    <div id="postCard" class="card"></div>
+  <header class="header"><div class="brand"><h1>WhisperBox</h1></div><div id="authArea" class="actions"></div></header>
 
-    <div class="card">
+  <main class="container">
+    <div id="postArea" class="card"></div>
+
+    <div class="card" style="max-width:900px;margin-top:12px">
       <h3>댓글</h3>
-      <div id="commentsArea"></div>
-      <div id="replyForm" style="display:block;margin-top:8px">
-        <textarea id="replyText" rows="3" placeholder="댓글을 입력하세요"></textarea>
-        <div class="row">
-          <button id="replyBtn">댓글 달기</button>
-          <button onclick="location.href='index.html'">목록으로</button>
+      <!-- 원글 요약을 댓글폼 위에 항상 표시 -->
+      <div id="postSummary" class="card small" style="margin-bottom:12px"></div>
+
+      <div id="commentForm" style="margin-bottom:12px">
+        <textarea id="commentInput" class="input" placeholder="댓글을 작성하세요. (로그인 필요)"></textarea>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn" id="commentBtn">댓글 등록</button>
+          <button class="btn ghost" id="backBtn">목록으로</button>
         </div>
       </div>
+
+      <div id="commentsList"></div>
     </div>
-  </div>
+  </main>
 
-  <script type="module" src="script.js"></script>
-  <script type="module">
-  (async function(){
-    const params = new URLSearchParams(location.search);
-    const id = params.get("id");
-    if(!id){ alert("잘못된 접근"); location.href="index.html"; return; }
+<script src="script.js"></script>
+<script>
+(async ()=>{
+  await renderHeaderAuth('#authArea');
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  if(!id) { location.href = '/'; return; }
 
-    await showCurrentUser();
-    await loadPost(id);
+  // 로드 게시글
+  let post;
+  try{
+    post = await api('/api/posts/' + id);
+    if(post.error) throw new Error(post.error);
+  }catch(e){ showMsg(e.message || '게시글 불러오기 실패'); location.href='/'; return; }
 
-    // 댓글 작성
-    document.getElementById("replyBtn").addEventListener("click", async ()=>{
-      const text = document.getElementById("replyText").value.trim();
-      if(!text) return alert("댓글을 입력하세요");
+  // 서버가 게시글 오브젝트 직접 반환 (server.js: res.json(post))
+  // render post header
+  const p = post;
+  const postArea = document.getElementById('postArea');
+  postArea.innerHTML = `
+    <h2 style="margin:0">${escapeHtml(p.title)}</h2>
+    <div class="small">by ${escapeHtml(p.author)} · ${new Date(p.date).toLocaleString()}</div>
+    <div class="post-content">${escapeHtml(p.content)}</div>
+  `;
 
-      const res = await fetch(`/api/posts/${id}/comments`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ text })
+  // post summary above comment form
+  const postSummary = document.getElementById('postSummary');
+  postSummary.innerHTML = `<strong>${escapeHtml(p.title)}</strong><div class="small">by ${escapeHtml(p.author)}</div><div style="margin-top:8px">${escapeHtml(p.content).slice(0, 500)}${p.content.length>500?'…':''}</div>`;
+
+  // comments list
+  const commentsList = document.getElementById('commentsList');
+  function renderComments(){
+    if(!p.comments || p.comments.length===0) commentsList.innerHTML = '<div class="small">등록된 댓글이 없습니다.</div>';
+    else commentsList.innerHTML = p.comments.map(c=>`
+      <div class="comment">
+        <div class="meta"><strong>${escapeHtml(c.author)}</strong> · ${new Date(c.date).toLocaleString()}</div>
+        <div style="margin-top:6px">${escapeHtml(c.content)}</div>
+      </div>
+    `).join('');
+  }
+  renderComments();
+
+  document.getElementById('backBtn').addEventListener('click', ()=> location.href = '/');
+
+  // 댓글 등록
+  document.getElementById('commentBtn').addEventListener('click', async ()=>{
+    const text = document.getElementById('commentInput').value.trim();
+    if(!text) return showMsg('댓글 내용을 입력하세요.');
+    try{
+      const res = await api('/api/posts/' + id + '/comments', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ content: text })
       });
-      const data = await res.json().catch(()=>({}));
-      if(res.ok){
-        document.getElementById("replyText").value = "";
-        await loadPost(id);
-      } else alert(data.error || "댓글 작성 실패");
-    });
-  })();
-  </script>
+      if(res.ok){ 
+        // 서버가 ok:true 반환하면 새 댓글을 로드 (간단히 pop into p)
+        p.comments.push({ author: (await getCurrentUser())?.username || '익명', content: text, date: new Date().toISOString() });
+        document.getElementById('commentInput').value = '';
+        renderComments();
+      } else showMsg(res.error || '댓글 등록 실패');
+    }catch(e){ showMsg(e.message || '오류'); }
+  });
+})();
+</script>
 </body>
 </html>
