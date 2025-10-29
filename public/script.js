@@ -23,6 +23,44 @@ async function getCurrentUser() {
 function el(sel){ return document.querySelector(sel); }
 function elAll(sel){ return document.querySelectorAll(sel); }
 
+// 현재 로그인된 사용자 정보 불러오기
+async function showCurrentUser(requireLogin = false) {
+  try {
+    const res = await fetch("/api/current-user", { credentials: "include" });
+    const user = await res.json();
+
+    // 로그인이 필수인데 로그인이 안 되어있으면 로그인 페이지로 이동
+    if (requireLogin && !user) {
+      alert("로그인이 필요합니다!");
+      location.href = "login.html";
+      return null;
+    }
+
+    return user;
+  } catch (err) {
+    console.error("사용자 정보 불러오기 실패:", err);
+    if (requireLogin) {
+      alert("로그인 확인 중 오류가 발생했습니다.");
+      location.href = "login.html";
+    }
+    return null;
+  }
+}
+
+// 로그아웃 함수
+async function logout() {
+  try {
+    await fetch("/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    alert("로그아웃되었습니다.");
+    location.href = "index.html";
+  } catch (err) {
+    console.error("로그아웃 실패:", err);
+  }
+}
+
 async function showCurrentUser(requireLogin=false){
   const res = await fetch("/api/current-user");
   const user = await res.json();
