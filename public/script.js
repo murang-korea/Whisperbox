@@ -1,189 +1,64 @@
-// === public/script.js ===
-window.__WB_CURRENT_USER = null;
-
-// 로그인한 사용자 표시
-window.showCurrentUser = async function(requireLogin = false) {
-  try {
-    const res = await fetch("/api/me");
-    if (!res.ok) return null;
-    const data = await res.json();
-    const user = data.user || null;
-    window.__WB_CURRENT_USER = user;
-
-    const userArea = document.getElementById("userArea");
-    if (userArea) {
-      if (user) {
-        userArea.innerHTML = `
-          <div style="text-align:right">
-            <small>안녕하세요, <strong>${escapeHtml(user.nickname)}</strong></small>
-            <div style="margin-top:6px">
-              <button onclick="doLogout()">로그아웃</button>
-            </div>
-          </div>`;
-      } else {
-        userArea.innerHTML = `<div style="text-align:right"><small class="muted">비로그인</small></div>`;
-      }
-    }
-
-    if (requireLogin && !user) {
-      alert("로그인이 필요합니다.");
-      location.href = "login.html";
-      return null;
-    }
-
-    return user;
-  } catch (e) {
-    console.error(e);
-    return null;
+<!-- Include this as <script src="script.js"></script> in each HTML -->
+<script>
+/* script.js - 공통 유틸 & 세션 관련 함수 */
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const j = await res.json();
+    if (!res.ok && j && j.error) throw new Error(j.error);
+    return j;
   }
-};
-
-// 로그아웃
-window.doLogout = async function() {
-  try {
-    const res = await fetch("/api/logout", { method: "POST" });
-    if (res.ok) {
-      window.__WB_CURRENT_USER = null;
-      location.href = "index.html";
-    } else alert("로그아웃 실패");
-  } catch (e) {
-    console.error(e);
-    alert("네트워크 오류");
-  }
-};
-
-// 새 글 작성 (POST)
-window.postNew = async function(title, content) {
-  try {
-    const res = await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, content })
-    });
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, data };
-  } catch (e) {
-    console.error("postNew error:", e);
-    return { ok: false, error: e.message };
-  }
-};
-
-// === 게시글 목록 ===
-window.loadPosts = async function(search = "", sort = "latest") {
-  try {
-    const res = await fetch("/api/posts");
-    const data = await res.json();
-    const posts = data.posts || [];
-
-    let filtered = posts;
-    if (search) {
-      filtered = posts.filter(
-        p =>
-          p.title.includes(search) ||
-          p.content.includes(search) ||
-          p.author.includes(search)
-      );
-    }
-
-    if (sort === "random") filtered.sort(() => Math.random() - 0.5);
-    else if (sort === "likes") filtered.sort((a, b) => b.likes - a.likes);
-    else if (sort === "comments") filtered.sort((a, b) => b.comments.length - a.comments.length);
-    else filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    const list = document.getElementById("postsList");
-    if (!list) return;
-    list.innerHTML =
-      filtered.length === 0
-        ? `<div class="card">게시글이 없습니다</div>`
-        : filtered
-            .map(
-              p => `
-        <div class="card post" onclick="location.href='view.html?id=${p.id}'">
-          <h3>${escapeHtml(p.title)}</h3>
-          <p>${truncate(p.content, 100)}</p>
-          <div class="meta">
-            <span>👤 ${escapeHtml(p.author)}</span>
-            <span>❤️ ${p.likes}</span>
-            <span>💬 ${p.comments.length}</span>
-          </div>
-        </div>`
-            )
-            .join("");
-  } catch (e) {
-    console.error("loadPosts error:", e);
-  }
-};
-
-// === 게시글 보기 ===
-window.loadPost = async function(id) {
-  try {
-    const res = await fetch(`/api/posts/${id}`);
-    if (!res.ok) throw new Error("글 불러오기 실패");
-    const data = await res.json();
-    const post = data.post;
-
-    const likedPosts = JSON.parse(localStorage.getItem("likedPosts") || "[]");
-    const alreadyLiked = likedPosts.includes(id);
-
-    const card = document.getElementById("postCard");
-    card.innerHTML = `
-      <h2>${escapeHtml(post.title)}</h2>
-      <p>${escapeHtml(post.content)}</p>
-      <div class="meta">
-        <span>👤 ${escapeHtml(post.author)}</span>
-        <span>❤️ <span id="likeCount">${post.likes}</span></span>
-      </div>
-      <div style="margin-top:8px">
-        <button id="likeBtn" style="background:${alreadyLiked ? '#ffcccc' : ''}">
-          ${alreadyLiked ? "좋아요 취소" : "좋아요"}
-        </button>
-      </div>
-    `;
-
-    // 댓글 표시
-    const commentsArea = document.getElementById("commentsArea");
-    commentsArea.innerHTML =
-      post.comments.length === 0
-        ? `<p>댓글이 없습니다</p>`
-        : post.comments
-            .map(
-              c => `<div class="comment">
-                      <b>${escapeHtml(c.author)}</b>: ${escapeHtml(c.text)}
-                    </div>`
-            )
-            .join("");
-
-    // 좋아요 버튼 이벤트
-document.getElementById("likeBtn").onclick = async () => {
-  const res2 = await fetch(`/api/posts/${id}/like`, { method: "POST" });
-  if (res2.ok) {
-    const data2 = await res2.json();
-    document.getElementById("likeCount").textContent = data2.likes;
-
-    const likeBtn = document.getElementById("likeBtn");
-    if (data2.liked) {
-      likeBtn.textContent = "좋아요 취소";
-      likeBtn.style.background = "#ffcccc";
-    } else {
-      likeBtn.textContent = "좋아요";
-      likeBtn.style.background = "";
-    }
-  } else {
-    alert("좋아요 실패");
-  }
-};
-
-// === 유틸 ===
-function escapeHtml(s) {
-  if (!s) return "";
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+  return res;
 }
 
-function truncate(s, n) {
-  if (!s) return "";
-  return s.length > n ? s.slice(0, n) + "..." : s;
-      }
+async function getCurrentUser() {
+  try {
+    const r = await fetch('/api/current-user');
+    const j = await r.json();
+    return j || null;
+  } catch(e) { return null; }
+}
+
+function el(sel){ return document.querySelector(sel); }
+function elAll(sel){ return document.querySelectorAll(sel); }
+
+/* 로그인 상태 표시용(헤더에 넣을 수 있도록) */
+async function renderHeaderAuth(containerSelector) {
+  const cont = document.querySelector(containerSelector);
+  if(!cont) return;
+  const user = await getCurrentUser();
+  if(user && user.username) {
+    cont.innerHTML = `
+      <div class="row" style="gap:8px">
+        <div class="small">안녕하세요, <strong>${escapeHtml(user.username)}</strong></div>
+        <button class="btn ghost" id="logoutBtn">로그아웃</button>
+      </div>
+    `;
+    document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+      await fetch('/api/logout', { method:'POST' });
+      location.href = '/';
+    });
+  } else {
+    cont.innerHTML = `
+      <div class="row">
+        <button class="btn" onclick="location.href='/login.html'">로그인</button>
+        <button class="btn ghost" onclick="location.href='/register.html'">회원가입</button>
+      </div>
+    `;
+  }
+}
+
+/* 간단한 XSS 방지 */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* helper: show alert-like toast (simple) */
+function showMsg(msg){ alert(msg); }
+
+/* export to global */
+window.api = api;
+window.getCurrentUser = getCurrentUser;
+window.renderHeaderAuth = renderHeaderAuth;
+window.escapeHtml = escapeHtml;
+window.showMsg = showMsg;
+</script>
