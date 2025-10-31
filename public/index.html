@@ -3,70 +3,17 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>📜 WhisperBox</title>
+<title>WhisperBox</title>
 <link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
 </head>
-<body>
+<body onload="loadPosts()">
   <div class="header">
-    📜 WhisperBox
-    <div id="userArea" style="float:right"></div>
+    <h1>WhisperBox</h1>
+    <button onclick="location.href='write.html'">✏️ 글쓰기</button>
+    <button onclick="logout()">🚪 로그아웃</button>
   </div>
-
-  <div class="container">
-    <button id="writeBtn" style="background-color:#ffb366;margin-bottom:10px;">✏️ 새 글 작성</button>
-    <div id="postList"></div>
-  </div>
-
-  <script src="script.js"></script>
-  <script>
-  document.addEventListener("DOMContentLoaded", async () => {
-    // 로그인 상태 확인
-    const user = await showCurrentUser();
-
-    const userArea = document.getElementById("userArea");
-    const writeBtn = document.getElementById("writeBtn");
-
-    // 로그인 상태 표시
-    if (user) {
-      userArea.innerHTML = `${user.username}님 | <a href="#" id="logoutBtn">로그아웃</a>`;
-      document.getElementById("logoutBtn").onclick = logout;
-    } else {
-      userArea.innerHTML = `<a href="login.html" style="color:white;">로그인</a>`;
-    }
-
-    // 글쓰기 버튼 동작
-    writeBtn.addEventListener("click", () => {
-      if (!user) {
-        alert("로그인 후 작성할 수 있습니다!");
-        location.href = "login.html";
-      } else {
-        location.href = "write.html";
-      }
-    });
-
-    // 게시글 목록 불러오기
-    try {
-      const res = await fetch("/api/posts");
-      const posts = await res.json();
-      const postList = document.getElementById("postList");
-
-      if (!Array.isArray(posts) || posts.length === 0) {
-        postList.innerHTML = "<p>아직 게시글이 없습니다.</p>";
-        return;
-      }
-
-      postList.innerHTML = posts.map(p => `
-        <div class="card" style="margin-top:10px;cursor:pointer" onclick="location.href='view.html?id=${p.id}'">
-          <h3>${p.title}</h3>
-          <p>${p.content.slice(0, 80)}...</p>
-          <small>✏️ ${p.author} | 🕒 ${new Date(p.date).toLocaleString()}</small>
-        </div>
-      `).join("");
-    } catch (err) {
-      console.error(err);
-      alert("게시글을 불러오는 중 오류가 발생했습니다.");
-    }
-  });
-  </script>
+  <div id="postList" class="container"></div>
 </body>
 </html>
