@@ -1,61 +1,18 @@
 <!doctype html>
 <html lang="ko">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>🔐 로그인 - WhisperBox</title>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>로그인</title>
 <link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <h2>🔐 WhisperBox 로그인</h2>
-
-      <input id="usernameInput" type="text" placeholder="아이디" style="width:100%;padding:8px;margin-top:8px"/>
-      <input id="passwordInput" type="password" placeholder="비밀번호" style="width:100%;padding:8px;margin-top:8px"/>
-
-      <div class="row" style="margin-top:10px;justify-content:space-between">
-        <button id="loginBtn" style="background-color:#ffb366;">로그인</button>
-        <button id="registerBtn">회원가입</button>
-      </div>
-    </div>
+  <div class="card">
+    <h2>로그인</h2>
+    <input id="user" placeholder="아이디"/><br><br>
+    <input id="pass" type="password" placeholder="비밀번호"/><br><br>
+    <button onclick="login(user.value, pass.value)">로그인</button>
+    <button onclick="register(user.value, pass.value)">회원가입</button>
   </div>
-
-  <script src="script.js"></script>
-  <script>
-  document.getElementById("loginBtn").addEventListener("click", async ()=>{
-    const username = document.getElementById("usernameInput").value.trim();
-    const password = document.getElementById("passwordInput").value.trim();
-
-    if(!username || !password) {
-      alert("아이디와 비밀번호를 입력해주세요.");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        credentials: "include", // ✅ 세션 쿠키 유지
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({username, password})
-      });
-      const data = await res.json();
-
-      if(res.ok && data.ok){
-        alert("로그인 성공!");
-        location.href = "index.html";
-      } else {
-        alert(data.error || "로그인 실패");
-      }
-    } catch(e){
-      console.error(e);
-      alert("로그인 중 오류 발생");
-    }
-  });
-
-  document.getElementById("registerBtn").addEventListener("click", ()=>{
-    location.href = "register.html";
-  });
-  </script>
 </body>
 </html>
