@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>게시글 보기</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</head>
+<body onload="loadPostDetail()">
+  <div class="card">
+    <h2 id="postTitle"></h2>
+    <div id="postMeta" class="meta"></div>
+    <div id="postContent" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h3>댓글</h3>
+    <div id="commentList"></div>
+    <textarea id="commentInput" rows="3" placeholder="댓글을 입력하세요"></textarea>
+    <button onclick="submitComment()">등록</button>
+  </div>
+</body>
+</html>
