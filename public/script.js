@@ -1,79 +1,82 @@
-async function showCurrentUser(requireLogin=false){
-  try {
-    const res = await fetch("/api/current-user", { credentials:"include" });
-    const user = await res.json();
-    if(requireLogin && !user){
-      alert("로그인이 필요합니다!");
-      location.href="login.html";
-      return null;
-    }
-    return user;
-  } catch(e){
-    console.error(e);
-    if(requireLogin){
-      alert("로그인 확인 중 오류 발생!");
-      location.href="login.html";
-    }
-    return null;
-  }
+// --- Supabase 연결 ---
+const SUPABASE_URL = "https://abcd1234.supabase.co";  // 네 프로젝트 URL
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6..."; // 네 anon key
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// --- 로그인 유저 저장 ---
+let currentUser = JSON.parse(localStorage.getItem("whisper_user") || "null");
+
+async function login(username, password){
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("username", username)
+    .eq("password", password)
+    .single();
+  if(error || !data) return alert("아이디나 비밀번호가 틀렸습니다.");
+  currentUser = data;
+  localStorage.setItem("whisper_user", JSON.stringify(data));
+  alert("로그인 성공!");
+  location.href = "index.html";
 }
 
-async function logout(){
-  try {
-    await fetch("/api/logout", { method:"POST", credentials:"include" });
-    alert("로그아웃 되었습니다.");
-    location.href="index.html";
-  } catch(e){
-    console.error(e);
-  }
+async function register(username, password){
+  const { error } = await supabase.from("users").insert([{ username, password }]);
+  if(error) alert("회원가입 실패: " + error.message);
+  else alert("회원가입 완료! 로그인해주세요.");
 }
 
-// 로그인 요청
-async function doLogin(username, password) {
-  try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      credentials: "include", // 세션 쿠키 저장용
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.ok) {
-      alert(data.error || "로그인 실패");
-      return;
-    }
-
-    alert("로그인 성공!");
-    location.href = "index.html"; // 로그인 후 메인으로
-  } catch (e) {
-    console.error(e);
-    alert("로그인 중 오류 발생");
-  }
+function logout(){
+  localStorage.removeItem("whisper_user");
+  currentUser = null;
+  alert("로그아웃되었습니다.");
+  location.href = "login.html";
 }
 
-// 회원가입 요청
-async function doRegister(username, password) {
-  try {
-    const res = await fetch("/api/register", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
-    });
+// --- 게시글 ---
+async function postNew(title, content){
+  if(!currentUser) return alert("로그인이 필요합니다.");
+  const { error } = await supabase.from("posts").insert([{ title, content, author: currentUser.username }]);
+  if(error) alert("작성 실패: " + error.message);
+  else { alert("작성 완료!"); location.href="index.html"; }
+}
 
-    const data = await res.json();
+async function loadPosts(){
+  const { data } = await supabase.from("posts").select("*").order("created_at", { ascending:false });
+  const list = document.getElementById("postList");
+  list.innerHTML = data.map(p=>`
+    <div class="card" onclick="viewPost(${p.id})">
+      <h3>${p.title}</h3>
+      <p>${p.author} · ${new Date(p.created_at).toLocaleString()}</p>
+    </div>`).join("");
+}
 
-    if (!res.ok || !data.ok) {
-      alert(data.error || "회원가입 실패");
-      return;
-    }
+function viewPost(id){
+  location.href = `post.html?id=${id}`;
+}
 
-    alert("회원가입 완료! 로그인 페이지로 이동합니다.");
-    location.href = "login.html";
-  } catch (e) {
-    console.error(e);
-    alert("회원가입 중 오류 발생");
-  }
+async function loadPostDetail(){
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  const { data: post } = await supabase.from("posts").select("*").eq("id", id).single();
+  document.getElementById("postTitle").innerText = post.title;
+  document.getElementById("postContent").innerText = post.content;
+  document.getElementById("postMeta").innerText = `${post.author} · ${new Date(post.created_at).toLocaleString()}`;
+
+  const { data: comments } = await supabase.from("comments").select("*").eq("post_id", id).order("created_at", { ascending:true });
+  const list = document.getElementById("commentList");
+  list.innerHTML = comments.map(c=>`
+    <div class="comment"><b>${c.author}</b>: ${c.content}</div>
+  `).join("");
+}
+
+async function submitComment(){
+  const content = document.getElementById("commentInput").value.trim();
+  if(!content) return alert("댓글을 입력해주세요.");
+  if(!currentUser) return alert("로그인이 필요합니다.");
+  const params = new URLSearchParams(location.search);
+  const postId = params.get("id");
+  await supabase.from("comments").insert([{ post_id: postId, author: currentUser.username, content }]);
+  alert("댓글 작성 완료!");
+  location.reload();
 }
