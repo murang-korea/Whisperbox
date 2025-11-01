@@ -1,18 +1,33 @@
 <!doctype html>
 <html lang="ko">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>글쓰기</title>
-<link rel="stylesheet" href="style.css" />
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>새 글쓰기 - WhisperBox</title>
+<link rel="stylesheet" href="style.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js"></script>
+<script defer src="script.js"></script>
 </head>
 <body>
-  <div class="card">
-    <h2>새 글 작성</h2>
-    <input id="title" placeholder="제목"/><br><br>
-    <textarea id="content" rows="8" placeholder="내용"></textarea><br><br>
-    <button onclick="postNew(title.value, content.value)">📨 작성</button>
-    <button onclick="location.href='index.html'">취소</button>
-  </div>
+  <header class="header">
+    <h1>✏️ 새 글쓰기</h1>
+  </header>
+  <main class="container">
+    <input id="title" class="input" placeholder="제목 입력"/>
+    <textarea id="content" class="input" rows="6" placeholder="내용 입력"></textarea>
+    <button id="postBtn" class="btn">작성</button>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", ()=>{
+      const user = showCurrentUser(true);
+      document.getElementById("postBtn").addEventListener("click", async ()=>{
+        const t = document.getElementById("title").value.trim();
+        const c = document.getElementById("content").value.trim();
+        if(!t || !c) return alert("제목과 내용을 입력하세요.");
+        await postNew(t, c);
+      });
+    });
+  </script>
 </body>
 </html>
