@@ -1,48 +1,118 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>WhisperBox</title>
-  <link rel="stylesheet" href="style.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="script.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌟 WhisperBox 블로그</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #E0F7FA;
+      color: #1A1A1A;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-shadow { box-shadow: 0 8px 15px rgba(0,0,0,0.1); transition: all .2s; }
+    .card-shadow:hover { transform: translateY(-3px); box-shadow: 0 12px 20px rgba(0,0,0,0.15); }
+    .accent-button {
+      background-color: #00B8D4; color: white;
+      transition: background-color .2s, transform .1s;
+    }
+    .accent-button:hover { background-color: #008C9E; transform: translateY(-1px); }
+  </style>
 </head>
-<body>
-  <header class="header">
-    <h1>🧡 WhisperBox</h1>
-    <div id="authArea"></div>
+<body class="selection:bg-cyan-200 selection:text-cyan-800">
+
+  <!-- Header -->
+  <header class="bg-blue-500 text-white shadow-lg sticky top-0 z-30">
+    <div class="container mx-auto px-4 flex justify-between items-center h-16">
+      <div class="text-2xl font-bold">
+        <a href="index.html" class="flex items-center space-x-2">
+          <span class="text-yellow-300 text-3xl">✨</span>
+          <span>WhisperBox</span>
+        </a>
+      </div>
+      <nav class="flex space-x-4 items-center">
+        <a href="write.html" class="hover:text-yellow-300">새 글</a>
+        <button id="authButton" class="accent-button px-4 py-2 rounded-lg text-sm"></button>
+      </nav>
+    </div>
   </header>
 
-  <main class="container">
-    <button id="writeBtn" class="btn">✏️ 새 글쓰기</button>
-    <div id="postList"></div>
+  <!-- Main -->
+  <main class="container mx-auto px-4 py-8 flex-1">
+    <h2 class="text-3xl font-extrabold mb-6 text-cyan-800">📢 최신 글 목록</h2>
+    <div id="postList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-800">
+      <p class="text-center text-gray-500 col-span-full">불러오는 중...</p>
+    </div>
   </main>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", async ()=>{
-      const user = showCurrentUser();
-      const authArea = document.getElementById("authArea");
-      const writeBtn = document.getElementById("writeBtn");
+  <!-- Footer -->
+  <footer class="mt-auto bg-gray-800 text-white p-6">
+    <div class="container mx-auto text-center text-sm">
+      &copy; 2025 WhisperBox | 네온테마 블로그
+    </div>
+  </footer>
 
-      // 로그인 상태 표시
-      if(user){
-        authArea.innerHTML = `<button class="btn ghost" onclick="logout()">로그아웃</button>`;
-      }else{
-        authArea.innerHTML = `<button class="btn ghost" onclick="location.href='login.html'">로그인</button>`;
+  <script>
+    const SUPABASE_URL = "https://<너의-supabase-url>.supabase.co";
+    const SUPABASE_KEY = "<너의-anon-key>";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = JSON.parse(localStorage.getItem("whisper_user") || "null");
+
+    // 로그인/회원가입 버튼 동작
+    function updateAuthButton() {
+      const btn = document.getElementById("authButton");
+      if (currentUser) {
+        btn.textContent = "로그아웃";
+        btn.onclick = () => {
+          localStorage.removeItem("whisper_user");
+          currentUser = null;
+          alert("로그아웃되었습니다.");
+          updateAuthButton();
+        };
+      } else {
+        btn.textContent = "로그인";
+        btn.onclick = () => location.href = "login.html";
+      }
+    }
+
+    // 글 목록 불러오기
+    async function loadPosts() {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const container = document.getElementById("postList");
+      if (error) {
+        container.innerHTML = `<p class="text-red-500">불러오기 실패: ${error.message}</p>`;
+        return;
       }
 
-      // 글쓰기 버튼
-      writeBtn.addEventListener("click", ()=>{
-        if(!user){
-          alert("로그인이 필요합니다!");
-          location.href = "login.html";
-        }else{
-          location.href = "write.html";
-        }
-      });
+      if (!data.length) {
+        container.innerHTML = `<p class="text-gray-500 col-span-full text-center">아직 작성된 글이 없습니다.</p>`;
+        return;
+      }
 
-      await loadPosts();
+      container.innerHTML = data.map(p => `
+        <article class="bg-white p-5 rounded-xl card-shadow">
+          <h3 class="text-xl font-bold mb-2 text-cyan-600">${p.title}</h3>
+          <p class="text-gray-700 text-sm mb-3">${p.author} · ${new Date(p.created_at).toLocaleString()}</p>
+          <p class="text-gray-600 line-clamp-3 mb-4">${p.content.substring(0, 100)}...</p>
+          <a href="post.html?id=${p.id}" class="accent-button inline-block px-4 py-2 rounded-lg text-sm font-medium">더 읽기 👀</a>
+        </article>
+      `).join("");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      updateAuthButton();
+      loadPosts();
     });
   </script>
 </body>
