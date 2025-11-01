@@ -3,17 +3,63 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>WhisperBox</title>
+<title>🧡 WhisperBox</title>
 <link rel="stylesheet" href="style.css" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js"></script>
 </head>
-<body onload="loadPosts()">
+<body>
   <div class="header">
-    <h1>WhisperBox</h1>
-    <button onclick="location.href='write.html'">✏️ 글쓰기</button>
-    <button onclick="logout()">🚪 로그아웃</button>
+    🧡 WhisperBox
+    <div style="position:absolute; right:20px; top:14px;">
+      <button id="authBtn" class="ghost" style="font-size:0.9rem;padding:6px 10px;"></button>
+    </div>
   </div>
-  <div id="postList" class="container"></div>
+
+  <div class="container">
+    <div class="card">
+      <h2>최근 글</h2>
+      <div id="postList"></div>
+      <button id="writeBtn" style="margin-top:12px;">✏️ 새 글 작성</button>
+    </div>
+  </div>
+
+  <div class="footer">© 2025 WhisperBox</div>
+
+  <script src="script.js"></script>
+  <script>
+  (async ()=>{
+    const user = await showCurrentUser(false);
+    const authBtn = document.getElementById("authBtn");
+
+    if(user){
+      authBtn.textContent = "🚪 로그아웃";
+      authBtn.onclick = logout;
+    }else{
+      authBtn.textContent = "🔐 로그인";
+      authBtn.onclick = ()=>location.href="login.html";
+    }
+
+    // 글 목록 로드
+    const res = await fetch("/api/posts");
+    const posts = await res.json();
+    const list = document.getElementById("postList");
+    if(posts.length === 0) list.innerHTML = "<p>아직 글이 없습니다.</p>";
+    else list.innerHTML = posts.map(p=>`
+      <div class="post">
+        <strong>${p.title}</strong><br>
+        <small>by ${p.author} • ${new Date(p.created_at).toLocaleString()}</small>
+      </div>
+    `).join("");
+
+    // 글쓰기 버튼
+    document.getElementById("writeBtn").addEventListener("click", ()=>{
+      if(!user){
+        alert("로그인이 필요합니다!");
+        location.href="login.html";
+      } else {
+        location.href="write.html";
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
